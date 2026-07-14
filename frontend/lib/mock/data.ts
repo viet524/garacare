@@ -184,15 +184,6 @@ export const MOCK_USERS = [
   { id: 3, username: "kythuat.hung", fullName: "Bùi Văn Hùng", phone: "0901 000 003", role: "Technician" as const },
 ];
 
-// Toàn bộ account demo dùng cho trang đăng nhập chung (Customer + nội bộ) —
-// TODO: thay bằng lib/api/auth.ts (LoginAsync trả về Role qua JWT claim) khi GARA-15/16 xong.
-export const MOCK_LOGIN_ACCOUNTS = [
-  { username: "admin", role: "Admin" as const, label: "Đặng Quốc Bảo (Admin)" },
-  { username: "letan.mai", role: "Staff" as const, label: "Ngô Thị Mai (Staff)" },
-  { username: "kythuat.hung", role: "Technician" as const, label: "Bùi Văn Hùng (Technician)" },
-  { username: "annguyen", role: "Customer" as const, label: "Nguyễn Văn An (Customer)" },
-];
-
 export const MOCK_REVENUE = {
   totalRevenue: 48250000,
   totalTransactions: 37,

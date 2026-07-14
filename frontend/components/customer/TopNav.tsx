@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { clearSession, getSession } from "@/lib/auth/session";
 import styles from "./TopNav.module.css";
 
 const LINKS = [
@@ -12,11 +14,22 @@ const LINKS = [
 
 interface TopNavProps {
   unreadCount?: number;
-  customerInitial?: string;
 }
 
-export function TopNav({ unreadCount = 0, customerInitial = "K" }: TopNavProps) {
+export function TopNav({ unreadCount = 0 }: TopNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [fullName, setFullName] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFullName(getSession()?.fullName ?? null);
+  }, []);
+
+  function logout() {
+    clearSession();
+    router.replace("/");
+  }
+
   return (
     <nav className={styles.nav}>
       <Link href="/customer" className={styles.logo}>
@@ -38,7 +51,8 @@ export function TopNav({ unreadCount = 0, customerInitial = "K" }: TopNavProps) 
           🔔
           {unreadCount > 0 && <span className={styles.badge}>{unreadCount}</span>}
         </Link>
-        <div className={styles.avatar}>{customerInitial}</div>
+        <div className={styles.avatar} title={fullName ?? undefined}>{fullName ? fullName.charAt(0).toUpperCase() : "?"}</div>
+        <button type="button" className={styles.logoutBtn} onClick={logout}>Đăng xuất</button>
       </div>
     </nav>
   );

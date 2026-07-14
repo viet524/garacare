@@ -1,31 +1,40 @@
 "use client";
 
 import { useState } from "react";
-import { MOCK_LOGIN_ACCOUNTS } from "@/lib/mock/data";
+import { useRouter } from "next/navigation";
+import * as authApi from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { homePathForRole, saveSession } from "@/lib/auth/session";
 
-// Đăng nhập chung cho cả Customer và nội bộ (Staff/Technician/Admin) — sau khi xác thực,
-// điều hướng theo Role trả về từ backend. Đây là điểm vào duy nhất, không tách 2 trang login.
-// TODO: nối lib/api/auth.ts (LoginAsync) khi GARA-15/16 xong.
+// Đăng nhập chung cho cả Customer và nội bộ (Staff/Technician/Admin) bằng Email + mật khẩu —
+// sau khi xác thực, điều hướng theo Role trả về từ backend.
 export function useLoginViewModel() {
-  const [username, setUsername] = useState("");
+  const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
-    window.setTimeout(() => {
-      setIsSubmitting(false);
-      const account = MOCK_LOGIN_ACCOUNTS.find((a) => a.username === username);
-      if (!account || !password) {
-        setError("Sai tên đăng nhập hoặc mật khẩu.");
-        return;
+    try {
+      const result = await authApi.login({ email, password });
+      saveSession({ token: result.token, role: result.role, userId: result.userId, fullName: result.fullName });
+      router.push(homePathForRole(result.role));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError("Tài khoản chưa xác minh email. Kiểm tra hộp thư hoặc yêu cầu gửi lại mã xác minh.");
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Không đăng nhập được — kiểm tra lại kết nối mạng và thử lại.");
       }
-      window.location.href = account.role === "Customer" ? "/customer" : "/staff";
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  return { username, setUsername, password, setPassword, error, isSubmitting, submit, demoAccounts: MOCK_LOGIN_ACCOUNTS };
+  return { email, setEmail, password, setPassword, error, isSubmitting, submit };
 }

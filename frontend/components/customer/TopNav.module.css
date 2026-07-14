@@ -91,3 +91,18 @@
   font-size: 13px;
   font-weight: 700;
 }
+
+.logoutBtn {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--grease);
+  opacity: 0.6;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+.logoutBtn:hover { opacity: 1; border-color: var(--brake-red); color: var(--brake-red); }

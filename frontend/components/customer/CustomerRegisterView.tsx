@@ -4,8 +4,6 @@ import { ProgressGauge } from "@/components/shared/ProgressGauge";
 import styles from "./AuthSplitView.module.css";
 
 interface CustomerRegisterViewProps {
-  username: string;
-  setUsername: (v: string) => void;
   fullName: string;
   setFullName: (v: string) => void;
   phone: string;
@@ -14,12 +12,14 @@ interface CustomerRegisterViewProps {
   setEmail: (v: string) => void;
   password: string;
   setPassword: (v: string) => void;
+  confirmPassword: string;
+  setConfirmPassword: (v: string) => void;
   error: string | null;
   isSubmitting: boolean;
   submit: (e: React.FormEvent) => void;
 }
 
-export function CustomerRegisterView({ username, setUsername, fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, error, isSubmitting, submit }: CustomerRegisterViewProps) {
+export function CustomerRegisterView({ fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, confirmPassword, setConfirmPassword, error, isSubmitting, submit }: CustomerRegisterViewProps) {
   return (
     <div className={styles.split}>
       <div className={styles.brand}>
@@ -32,10 +32,6 @@ export function CustomerRegisterView({ username, setUsername, fullName, setFullN
       <div className={styles.formSide}>
         <form className={styles.formCard} onSubmit={submit}>
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="username">Tên đăng nhập</label>
-            <input id="username" className={styles.input} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
-          </div>
-          <div className={styles.field}>
             <label className={styles.label} htmlFor="fullName">Họ và tên</label>
             <input id="fullName" className={styles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
@@ -45,11 +41,15 @@ export function CustomerRegisterView({ username, setUsername, fullName, setFullN
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">Email</label>
-            <input id="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="password">Mật khẩu</label>
             <input id="password" type="password" className={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+          </div>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+            <input id="confirmPassword" type="password" className={styles.input} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           <Button type="submit" fullWidth disabled={isSubmitting}>

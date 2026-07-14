@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { clearSession, getSession } from "@/lib/auth/session";
 import styles from "./Sidebar.module.css";
 
 const LINKS = [
@@ -16,7 +17,19 @@ const LINKS = [
 
 export function StaffShell({ children, active }: { children: ReactNode; active?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const activeHref = active ?? pathname;
+  const [fullName, setFullName] = useState<string | null>(null);
+
+  useEffect(() => {
+    setFullName(getSession()?.fullName ?? null);
+  }, []);
+
+  function logout() {
+    clearSession();
+    router.replace("/");
+  }
+
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -34,6 +47,10 @@ export function StaffShell({ children, active }: { children: ReactNode; active?:
             </Link>
           ))}
         </nav>
+        <div className={styles.userBox}>
+          {fullName && <div className={styles.userName}>{fullName}</div>}
+          <button type="button" className={styles.logoutBtn} onClick={logout}>Đăng xuất</button>
+        </div>
       </aside>
       <main className={styles.content}>{children}</main>
     </div>
