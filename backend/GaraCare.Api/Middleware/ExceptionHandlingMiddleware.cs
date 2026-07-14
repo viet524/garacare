@@ -26,6 +26,7 @@ public class ExceptionHandlingMiddleware
         {
             var statusCode = ex switch
             {
+                InvalidCredentialsException => HttpStatusCode.Unauthorized,
                 InvalidTransitionException => HttpStatusCode.BadRequest,
                 ForbiddenActionException => HttpStatusCode.Forbidden,
                 EntityNotFoundException => HttpStatusCode.NotFound,

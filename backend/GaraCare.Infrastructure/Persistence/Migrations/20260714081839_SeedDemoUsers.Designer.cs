@@ -4,6 +4,7 @@ using GaraCare.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GaraCare.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(GaraCareDbContext))]
-    partial class GaraCareDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260714081839_SeedDemoUsers")]
+    partial class SeedDemoUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -103,6 +106,16 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Customers");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Email = "customer@garacare.vn",
+                            FullName = "Nguyễn Văn An",
+                            Phone = "0901000004",
+                            UserId = 4
+                        });
                 });
 
             modelBuilder.Entity("GaraCare.Domain.Entities.Notification", b =>
@@ -329,6 +342,52 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Email = "admin@garacare.vn",
+                            FullName = "Đặng Quốc Bảo",
+                            IsEmailVerified = true,
+                            PasswordHash = "$2a$11$EH94CA4UW7yi9dQvxkyBvu3LQiFusGTsJXbPimwHeAil86qX4P9lq",
+                            Phone = "0901000001",
+                            Role = "Admin",
+                            Username = "admin@garacare.vn"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Email = "staff@garacare.vn",
+                            FullName = "Ngô Thị Mai",
+                            IsEmailVerified = true,
+                            PasswordHash = "$2a$11$EH94CA4UW7yi9dQvxkyBvu3LQiFusGTsJXbPimwHeAil86qX4P9lq",
+                            Phone = "0901000002",
+                            Role = "Staff",
+                            Username = "staff@garacare.vn"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Email = "technician@garacare.vn",
+                            FullName = "Bùi Văn Hùng",
+                            IsEmailVerified = true,
+                            PasswordHash = "$2a$11$EH94CA4UW7yi9dQvxkyBvu3LQiFusGTsJXbPimwHeAil86qX4P9lq",
+                            Phone = "0901000003",
+                            Role = "Technician",
+                            Username = "technician@garacare.vn"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Email = "customer@garacare.vn",
+                            FullName = "Nguyễn Văn An",
+                            IsEmailVerified = true,
+                            PasswordHash = "$2a$11$EH94CA4UW7yi9dQvxkyBvu3LQiFusGTsJXbPimwHeAil86qX4P9lq",
+                            Phone = "0901000004",
+                            Role = "Customer",
+                            Username = "customer@garacare.vn"
+                        });
                 });
 
             modelBuilder.Entity("GaraCare.Domain.Entities.Vehicle", b =>

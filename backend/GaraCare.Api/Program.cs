@@ -78,7 +78,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-app.UseHttpsRedirection();
+// Không ép HTTPS redirect ở Development — SPA dev server gọi thẳng http://localhost:5150
+// (theo Cors:AllowedOrigins), và redirect trên request preflight OPTIONS bị trình duyệt
+// chặn thẳng ("Redirect is not allowed for a preflight request").
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors(FrontendCorsPolicy);
 

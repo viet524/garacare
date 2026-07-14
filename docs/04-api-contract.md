@@ -37,7 +37,11 @@ Service Layer thực hiện đúng thứ tự sau (một hàm dùng chung, khôn
 
 Đây là các nhóm chức năng còn lại — tên cụ thể (route, verb) do team quyết định theo convention REST chuẩn ở `07-backend-conventions.md`, miễn giữ đúng nghiệp vụ dưới đây:
 
-- Auth: đăng ký Customer, đăng nhập trả JWT.
+- Auth (đăng nhập bằng Email, không phải Username — xem `03-data-model.md`):
+  `POST /auth/register`, `POST /auth/login`, `POST /auth/verify-email`,
+  `POST /auth/resend-verification`, `POST /auth/forgot-password`, `POST /auth/reset-password`.
+  Đăng ký KHÔNG trả JWT ngay — tài khoản chỉ đăng nhập được sau khi xác minh email bằng mã
+  gửi qua `verify-email`. `forgot-password`/`reset-password` dùng cùng cơ chế mã (chữ+số) gửi qua email.
 - CRUD Customer/Vehicle (tra cứu theo số điện thoại là thao tác quan trọng trong UC-02).
 - Tạo WorkOrder walk-in (UC-02) — không đi qua Appointment.
 - Thêm/sửa `QuotationItem` (chỉ khi WorkOrder ở `Diagnosing`/`QuotePending` và **chưa** Approved — xem ràng buộc ở `01-business-spec.md` §5).

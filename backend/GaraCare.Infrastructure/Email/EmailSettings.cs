@@ -8,5 +8,4 @@ public class EmailSettings
     public string Password { get; set; } = string.Empty;
     public string FromName { get; set; } = "GaraCare";
     public string FromAddress { get; set; } = string.Empty;
-    public bool UseSsl { get; set; } = true;
 }

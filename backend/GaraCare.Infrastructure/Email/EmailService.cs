@@ -1,4 +1,5 @@
 using GaraCare.Application.Interfaces;
+using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -29,7 +30,9 @@ public class EmailService : IEmailService
             message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
 
             using var client = new MailKit.Net.Smtp.SmtpClient();
-            await client.ConnectAsync(_settings.Host, _settings.Port, _settings.UseSsl, cancellationToken);
+            // SecureSocketOptions.Auto tự chọn STARTTLS (port 587) hay SSL-on-connect (port 465)
+            // theo đúng port khai báo — tránh lỗi cấu hình nhầm UseSsl=true trên port STARTTLS.
+            await client.ConnectAsync(_settings.Host, _settings.Port, SecureSocketOptions.Auto, cancellationToken);
             await client.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken);
             await client.SendAsync(message, cancellationToken);
             await client.DisconnectAsync(true, cancellationToken);

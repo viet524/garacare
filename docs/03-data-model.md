@@ -14,7 +14,11 @@ Nguồn nghiệp vụ: SRS mục 6. Đã điều chỉnh kiểu dữ liệu cho 
 ## Entities
 
 ### User
-`Id, Username, PasswordHash, FullName, Phone, Email, Role (Customer/Staff/Technician/Admin)`
+`Id, Username, PasswordHash, FullName, Phone, Email, Role (Customer/Staff/Technician/Admin), IsEmailVerified (bool), EmailVerificationCode (nullable), EmailVerificationCodeExpiresAt (nullable), PasswordResetCode (nullable), PasswordResetCodeExpiresAt (nullable)`
+
+> Đăng nhập bằng **Email** + mật khẩu (không phải Username). `Username` vẫn là field bắt buộc/duy nhất trong schema — với Customer tự đăng ký, hệ thống tự gán `Username = Email` (không có ô "tên đăng nhập" riêng trên form đăng ký); tài khoản nội bộ (Staff/Technician/Admin) do Admin tạo vẫn nhập Username riêng và `IsEmailVerified` được set `true` ngay vì không qua luồng tự đăng ký.
+>
+> `EmailVerificationCode`/`PasswordResetCode`: mã 6 ký tự gồm chữ hoa + số (loại bỏ ký tự dễ nhầm 0/O, 1/I), sinh bằng `RandomNumberGenerator`, gửi qua email. Tài khoản Customer chỉ đăng nhập được sau khi `IsEmailVerified = true`. Hạn dùng: mã xác minh tài khoản 24h, mã đặt lại mật khẩu 1h (ngắn hơn vì nhạy cảm hơn).
 
 ### Customer
 `Id, FullName, Phone, Email, Address, UserId (FK, nullable — null nếu khách vãng lai)`
