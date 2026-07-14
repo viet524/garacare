@@ -1,0 +1,21 @@
+.page { min-height: 100vh; background: var(--concrete); }
+.content { max-width: 1120px; margin: 0 auto; padding: var(--space-6); }
+.title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 24px; font-weight: 700; margin-bottom: var(--space-5); }
+
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
+
+.gaugeCard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-paper); padding: var(--space-6); display: flex; justify-content: center; }
+
+.timelineCard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-paper); padding: var(--space-5); }
+.timelineItem { padding: var(--space-3) 0; border-bottom: 1px dashed var(--border); }
+.timelineItem:last-child { border-bottom: none; }
+.timelineLabel { font-family: var(--font-display); text-transform: uppercase; font-size: 12px; font-weight: 700; }
+.timelineTime { font-family: var(--font-mono); font-size: 12px; opacity: 0.6; }
+.timelineNote { font-size: 13.5px; margin-top: 4px; opacity: 0.8; }
+
+.actions { display: flex; gap: var(--space-3); margin-top: var(--space-5); }
+.toast { margin-top: var(--space-4); font-size: 13.5px; color: var(--coolant-teal); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}

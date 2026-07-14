@@ -1,0 +1,103 @@
+.title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: var(--space-5);
+}
+
+.card {
+  background: var(--steel-raised);
+  border: 1px solid var(--border-steel);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stepLabel {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--safety-amber);
+}
+
+.searchRow { display: flex; gap: var(--space-2); }
+.input {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  background: var(--steel);
+  color: #EDEFEE;
+}
+.textarea {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  background: var(--steel);
+  color: #EDEFEE;
+  min-height: 90px;
+  resize: vertical;
+}
+
+.customerCard {
+  background: var(--steel);
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  padding: var(--space-3) var(--space-4);
+}
+.customerName { font-weight: 600; }
+.customerMeta { font-size: 12.5px; color: #A9B0B4; font-family: var(--font-mono); }
+
+.chips { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-steel);
+  background: transparent;
+  color: #EDEFEE;
+}
+.chipActive { background: var(--safety-amber); color: var(--grease); border-color: var(--safety-amber); }
+
+.notFound { color: #A9B0B4; font-size: 13.5px; }
+.newCustomerBtn {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--safety-amber);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-top: var(--space-2);
+}
+
+.warning {
+  border: 1px solid var(--safety-amber);
+  background: rgba(232, 163, 61, 0.12);
+  border-radius: 4px;
+  padding: var(--space-3) var(--space-4);
+  font-size: 13.5px;
+  color: var(--safety-amber);
+}
+
+.success {
+  border: 1px solid var(--coolant-teal);
+  background: rgba(62, 124, 124, 0.15);
+  border-radius: 4px;
+  padding: var(--space-4);
+  font-size: 14px;
+  color: #7FC3C3;
+}

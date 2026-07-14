@@ -1,0 +1,22 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.neutral { background: rgba(23, 24, 26, 0.08); color: var(--grease); }
+.amber { background: rgba(232, 163, 61, 0.18); color: #8a5c14; }
+.teal { background: rgba(62, 124, 124, 0.18); color: var(--coolant-teal); }
+.red { background: rgba(193, 68, 46, 0.16); color: var(--brake-red); }
+
+.onSteel.neutral { background: rgba(237, 239, 238, 0.12); color: #C7CCCE; }
+.onSteel.amber { background: rgba(232, 163, 61, 0.22); color: var(--safety-amber); }
+.onSteel.teal { background: rgba(62, 124, 124, 0.26); color: #7FC3C3; }
+.onSteel.red { background: rgba(193, 68, 46, 0.24); color: #F0897A; }

@@ -1,0 +1,69 @@
+.page { min-height: 100vh; background: var(--concrete); }
+.content { max-width: 1120px; margin: 0 auto; padding: var(--space-6); }
+.title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 24px; font-weight: 700; margin-bottom: var(--space-5); }
+
+.layout { display: grid; grid-template-columns: 8fr 4fr; gap: var(--space-6); align-items: start; }
+
+.calendarCard { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-paper); padding: var(--space-5); }
+.dateRow { margin-bottom: var(--space-4); }
+.dateInput { font-family: var(--font-mono); font-size: 15px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; }
+
+.slotGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+.slot {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: var(--space-4);
+  text-align: center;
+  border-radius: 4px;
+  border: 2px solid var(--safety-amber);
+  background: transparent;
+  color: var(--grease);
+}
+.slotFull { border-color: var(--border); color: #9AA09B; background: rgba(23,24,26,0.04); cursor: not-allowed; }
+.slotSelected { background: var(--safety-amber); color: var(--grease); }
+.slotCount { display: block; font-size: 11px; opacity: 0.7; margin-top: 4px; }
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-paper);
+  padding: var(--space-5);
+  position: sticky;
+  top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.select { font-family: var(--font-body); font-size: 14px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 4px; }
+.summaryLine { font-size: 13.5px; }
+.summaryMono { font-family: var(--font-mono); }
+
+.discountTag {
+  display: inline-block;
+  transform: rotate(-5deg);
+  background: var(--safety-amber);
+  color: var(--grease);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 3px;
+  align-self: flex-start;
+}
+
+.errorText { color: var(--brake-red); font-size: 13px; font-weight: 600; }
+
+.success {
+  background: #fff;
+  border: 1px solid var(--coolant-teal);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  color: var(--coolant-teal);
+  max-width: 480px;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,41 @@
+.split { min-height: 100vh; display: grid; grid-template-columns: 45% 55%; }
+
+.brand { background: var(--steel); color: #EDEFEE; display: flex; flex-direction: column; justify-content: center; padding: var(--space-8); gap: var(--space-4); }
+.brandLogo { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; font-size: 26px; }
+.brandLogo span { color: var(--safety-amber); }
+.brandTagline { font-size: 15px; color: #A9B0B4; max-width: 34ch; }
+
+.formSide { background: var(--concrete); display: flex; align-items: center; justify-content: center; padding: var(--space-6); }
+.formCard { width: 100%; max-width: 400px; }
+
+.field { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-4); }
+.label { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 11.5px; font-weight: 700; }
+.input { font-family: var(--font-mono); font-size: 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: #fff; width: 100%; }
+
+.errorText { color: var(--brake-red); font-size: 13px; margin: 0 0 var(--space-3); font-weight: 600; }
+
+.demoBox {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+}
+.demoLabel { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; font-weight: 700; opacity: 0.6; margin-bottom: var(--space-2); }
+.demoRow {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  color: var(--grease);
+}
+.demoRow:hover { color: var(--safety-amber); }
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; }
+  .brand { display: none; }
+}

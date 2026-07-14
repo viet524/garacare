@@ -1,0 +1,84 @@
+.wrap { display: flex; flex-direction: column; gap: var(--space-5); max-width: 900px; }
+
+.textarea {
+  width: 100%;
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  background: var(--steel-raised);
+  color: #EDEFEE;
+  min-height: 70px;
+  resize: vertical;
+}
+
+.sectionLabel {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--safety-amber);
+  margin-bottom: var(--space-2);
+}
+
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th {
+  text-align: left;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: #EDEFEE;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-steel);
+}
+.table td { padding: var(--space-3); border-bottom: 1px solid var(--border-steel); color: #EDEFEE; }
+.mono { font-family: var(--font-mono); }
+.right { text-align: right; }
+.warnIcon { color: var(--safety-amber); margin-left: 6px; }
+
+.newRow input, .newRow select {
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  background: var(--steel);
+  color: #EDEFEE;
+  width: 100%;
+}
+
+.removeBtn { background: none; border: none; color: var(--brake-red); font-family: var(--font-display); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+
+.totalBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-4);
+  background: var(--steel-raised);
+  border: 1px solid var(--border-steel);
+  border-radius: var(--radius-card);
+}
+.totalLabel { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 13px; color: #A9B0B4; }
+.totalValue { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: #EDEFEE; }
+
+.footer { display: flex; align-items: center; gap: var(--space-4); }
+.dateInput {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-steel);
+  border-radius: 4px;
+  background: var(--steel-raised);
+  color: #EDEFEE;
+}
+
+.success {
+  border: 1px solid var(--coolant-teal);
+  background: rgba(62, 124, 124, 0.15);
+  border-radius: 4px;
+  padding: var(--space-4);
+  font-size: 14px;
+  color: #7FC3C3;
+}

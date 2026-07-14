@@ -1,10 +1,14 @@
 "use client";
 
-// app/**: chỉ định tuyến (routing) + nối ViewModel với View, không chứa JSX hiển thị trực tiếp.
-import { useStaffHomeViewModel } from "@/viewmodels/staff/useStaffHomeViewModel";
-import { StaffHomeView } from "@/components/staff/StaffHomeView";
+import { useWorkOrderListViewModel } from "@/viewmodels/staff/useWorkOrderListViewModel";
+import { WorkOrderListView } from "@/components/staff/WorkOrderListView";
+import { StaffShell } from "@/components/staff/StaffShell";
 
-export default function StaffHomePage() {
-  const viewModel = useStaffHomeViewModel();
-  return <StaffHomeView {...viewModel} />;
+export default function StaffWorkOrdersPage() {
+  const vm = useWorkOrderListViewModel();
+  return (
+    <StaffShell active="/staff">
+      <WorkOrderListView {...vm} />
+    </StaffShell>
+  );
 }

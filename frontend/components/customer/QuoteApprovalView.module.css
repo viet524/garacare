@@ -1,0 +1,49 @@
+.page { min-height: 100vh; background: var(--concrete); padding: var(--space-6); }
+.content { max-width: 1120px; margin: 0 auto; }
+.logo { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; font-size: 18px; margin-bottom: var(--space-5); }
+.logo span { color: var(--safety-amber); }
+
+.layout { display: grid; grid-template-columns: 8fr 4fr; gap: var(--space-6); align-items: start; }
+
+.itemTable { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: var(--space-3); }
+.itemTable th { text-align: left; font-family: var(--font-display); text-transform: uppercase; font-size: 10.5px; color: var(--grease); opacity: 0.6; padding: var(--space-2) var(--space-2); border-bottom: 1px solid var(--border); }
+.itemTable td { padding: var(--space-3) var(--space-2); border-bottom: 1px solid var(--border); }
+.mono { font-family: var(--font-mono); }
+.right { text-align: right; }
+
+.desc { font-size: 13.5px; color: var(--grease); opacity: 0.75; margin-bottom: var(--space-2); }
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-paper);
+  padding: var(--space-5);
+  position: sticky;
+  top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.totalLabel { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--grease); opacity: 0.6; }
+.totalValue { font-family: var(--font-mono); font-size: 30px; font-weight: 600; }
+
+.expiredBanner {
+  max-width: 620px;
+  background: #fff;
+  border: 1px solid var(--brake-red);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  color: var(--brake-red);
+}
+
+.outcomeBanner {
+  margin-top: var(--space-4);
+  font-size: 13.5px;
+  color: var(--grease);
+  opacity: 0.75;
+}
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,89 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
+
+.tab {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border-steel);
+  background: transparent;
+  color: #A9B0B4;
+}
+.tabActive { background: var(--safety-amber); color: var(--grease); border-color: var(--safety-amber); }
+
+.filters { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); }
+.select {
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-steel);
+  background: var(--steel-raised);
+  color: #EDEFEE;
+}
+
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table thead th {
+  text-align: left;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  color: #A9B0B4;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-steel);
+  position: sticky;
+  top: 0;
+  background: var(--steel);
+}
+.table tbody td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-steel);
+}
+.table tbody tr:hover { background: rgba(237, 239, 238, 0.04); }
+.mono { font-family: var(--font-mono); }
+.right { text-align: right; }
+
+.callRow { background: rgba(193, 68, 46, 0.10); }
+.callKind {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--brake-red);
+}
+.phone { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+.rowActions { display: flex; gap: var(--space-2); }
+.smallBtn {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #EDEFEE;
+  background: transparent;
+  color: #EDEFEE;
+}
+.smallBtnDanger { border-color: var(--brake-red); color: var(--brake-red); }
+
+.empty { color: #A9B0B4; font-size: 13.5px; padding: var(--space-5); text-align: center; }
