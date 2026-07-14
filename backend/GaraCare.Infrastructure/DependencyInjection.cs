@@ -1,4 +1,6 @@
 using GaraCare.Application.Interfaces;
+using GaraCare.Application.Services;
+using GaraCare.Infrastructure.Auth;
 using GaraCare.Infrastructure.Common;
 using GaraCare.Infrastructure.Email;
 using GaraCare.Infrastructure.Persistence;
@@ -26,6 +28,11 @@ public static class DependencyInjection
 
         services.Configure<EmailSettings>(configuration.GetSection("Email"));
         services.AddScoped<IEmailService, EmailService>();
+
+        services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
+        services.AddScoped<IPasswordHasher, BCryptPasswordHasher>();
+        services.AddScoped<ITokenService, JwtTokenService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }
