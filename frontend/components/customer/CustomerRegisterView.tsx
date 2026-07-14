@@ -4,6 +4,8 @@ import { ProgressGauge } from "@/components/shared/ProgressGauge";
 import styles from "./AuthSplitView.module.css";
 
 interface CustomerRegisterViewProps {
+  username: string;
+  setUsername: (v: string) => void;
   fullName: string;
   setFullName: (v: string) => void;
   phone: string;
@@ -17,7 +19,7 @@ interface CustomerRegisterViewProps {
   submit: (e: React.FormEvent) => void;
 }
 
-export function CustomerRegisterView({ fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, error, isSubmitting, submit }: CustomerRegisterViewProps) {
+export function CustomerRegisterView({ username, setUsername, fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, error, isSubmitting, submit }: CustomerRegisterViewProps) {
   return (
     <div className={styles.split}>
       <div className={styles.brand}>
@@ -29,6 +31,10 @@ export function CustomerRegisterView({ fullName, setFullName, phone, setPhone, e
       </div>
       <div className={styles.formSide}>
         <form className={styles.formCard} onSubmit={submit}>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="username">Tên đăng nhập</label>
+            <input id="username" className={styles.input} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+          </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="fullName">Họ và tên</label>
             <input id="fullName" className={styles.input} value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -43,7 +49,7 @@ export function CustomerRegisterView({ fullName, setFullName, phone, setPhone, e
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="password">Mật khẩu</label>
-            <input id="password" type="password" className={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input id="password" type="password" className={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           <Button type="submit" fullWidth disabled={isSubmitting}>
