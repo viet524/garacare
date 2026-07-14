@@ -1,0 +1,6 @@
+@GaraCare.Api_HostAddress = http://localhost:5150
+
+GET {{GaraCare.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
