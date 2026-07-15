@@ -1,3 +1,4 @@
+using GaraCare.Application.DTOs.WorkOrders;
 using GaraCare.Application.Exceptions;
 using GaraCare.Application.Services;
 using GaraCare.Domain.Entities;
@@ -9,14 +10,15 @@ namespace GaraCare.Tests;
 
 public class WorkOrderServiceTests
 {
-    private static (WorkOrderService Service, GaraCareDbContext Db) CreateService()
+    private static (WorkOrderService Service, GaraCareDbContext Db, FakeDateTimeProvider Clock) CreateService()
     {
         var options = new DbContextOptionsBuilder<GaraCareDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var db = new GaraCareDbContext(options);
         var unitOfWork = new UnitOfWork(db);
-        return (new WorkOrderService(unitOfWork), db);
+        var clock = new FakeDateTimeProvider();
+        return (new WorkOrderService(unitOfWork, clock), db, clock);
     }
 
     private static async Task<(int VehicleId, int UserId, int CustomerId)> SeedVehicleAsync(GaraCareDbContext db)
@@ -35,7 +37,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_VehicleNotFound_ThrowsEntityNotFoundException()
     {
-        var (service, _) = CreateService();
+        var (service, _, _) = CreateService();
 
         await Assert.ThrowsAsync<EntityNotFoundException>(() => service.GetHistoryByVehicleAsync(999));
     }
@@ -43,7 +45,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_NoWorkOrders_ReturnsEmptyList()
     {
-        var (service, db) = CreateService();
+        var (service, db, _) = CreateService();
         var (vehicleId, _, _) = await SeedVehicleAsync(db);
 
         var result = await service.GetHistoryByVehicleAsync(vehicleId);
@@ -54,7 +56,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_OwnerCustomer_ReturnsHistory()
     {
-        var (service, db) = CreateService();
+        var (service, db, _) = CreateService();
         var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
         db.WorkOrders.Add(new WorkOrder
         {
@@ -74,7 +76,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_NonOwnerCustomer_ThrowsForbiddenActionException()
     {
-        var (service, db) = CreateService();
+        var (service, db, _) = CreateService();
         var (vehicleId, _, customerId) = await SeedVehicleAsync(db);
         var otherCustomerId = customerId + 999;
 
@@ -85,7 +87,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_OrdersByReceivedDateDescending()
     {
-        var (service, db) = CreateService();
+        var (service, db, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         db.WorkOrders.AddRange(
             new WorkOrder
@@ -111,5 +113,86 @@ public class WorkOrderServiceTests
         Assert.Equal(2, result.Count);
         Assert.Equal(200, result[0].TotalAmount);
         Assert.Equal(100, result[1].TotalAmount);
+    }
+
+    [Fact]
+    public async Task CreateWalkInAsync_VehicleNotFound_ThrowsEntityNotFoundException()
+    {
+        var (service, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            service.CreateWalkInAsync(new CreateWalkInWorkOrderRequest { VehicleId = 999, InitialDescription = "Kêu lạ" }, actorUserId: 1));
+    }
+
+    [Fact]
+    public async Task CreateWalkInAsync_NoOpenWorkOrder_CreatesWithoutWarning()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+
+        var result = await service.CreateWalkInAsync(
+            new CreateWalkInWorkOrderRequest { VehicleId = vehicleId, InitialDescription = "Kêu lạ" },
+            actorUserId: userId);
+
+        Assert.Equal("Received", result.Status);
+        Assert.False(result.HasOpenWorkOrderWarning);
+    }
+
+    [Fact]
+    public async Task CreateWalkInAsync_HasOpenWorkOrder_CreatesWithWarning()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        db.WorkOrders.Add(new WorkOrder
+        {
+            VehicleId = vehicleId,
+            CreatedByUserId = userId,
+            Status = WorkOrderStatus.Diagnosing,
+            ReceivedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateWalkInAsync(
+            new CreateWalkInWorkOrderRequest { VehicleId = vehicleId, InitialDescription = "Kêu lạ" },
+            actorUserId: userId);
+
+        Assert.True(result.HasOpenWorkOrderWarning);
+    }
+
+    [Fact]
+    public async Task CreateWalkInAsync_DeliveredOrCancelledWorkOrder_DoesNotCountAsOpen()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        db.WorkOrders.Add(new WorkOrder
+        {
+            VehicleId = vehicleId,
+            CreatedByUserId = userId,
+            Status = WorkOrderStatus.Delivered,
+            ReceivedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+        });
+        await db.SaveChangesAsync();
+
+        var result = await service.CreateWalkInAsync(
+            new CreateWalkInWorkOrderRequest { VehicleId = vehicleId, InitialDescription = "Kêu lạ" },
+            actorUserId: userId);
+
+        Assert.False(result.HasOpenWorkOrderWarning);
+    }
+
+    [Fact]
+    public async Task CreateWalkInAsync_WritesExactlyOneStatusHistoryRow()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+
+        var result = await service.CreateWalkInAsync(
+            new CreateWalkInWorkOrderRequest { VehicleId = vehicleId, InitialDescription = "Kêu lạ" },
+            actorUserId: userId);
+
+        var history = db.WorkOrderStatusHistories.Where(h => h.WorkOrderId == result.Id).ToList();
+        Assert.Single(history);
+        Assert.Equal(WorkOrderStatus.Received, history[0].FromStatus);
+        Assert.Equal(WorkOrderStatus.Received, history[0].ToStatus);
     }
 }
