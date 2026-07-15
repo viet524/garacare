@@ -195,4 +195,61 @@ public class WorkOrderServiceTests
         Assert.Equal(WorkOrderStatus.Received, history[0].FromStatus);
         Assert.Equal(WorkOrderStatus.Received, history[0].ToStatus);
     }
+
+    [Fact]
+    public async Task StartDiagnosisAsync_WorkOrderNotFound_ThrowsEntityNotFoundException()
+    {
+        var (service, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            service.StartDiagnosisAsync(999, new StartDiagnosisRequest(), actorUserId: 1));
+    }
+
+    [Fact]
+    public async Task StartDiagnosisAsync_FromReceived_TransitionsToDiagnosing()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        var result = await service.StartDiagnosisAsync(workOrder.Id, new StartDiagnosisRequest { DiagnosisNote = "Hỏng bugi" }, actorUserId: userId);
+
+        Assert.Equal("Diagnosing", result.Status);
+        Assert.Equal("Hỏng bugi", result.DiagnosisNote);
+    }
+
+    [Theory]
+    [InlineData(WorkOrderStatus.Diagnosing)]
+    [InlineData(WorkOrderStatus.QuotePending)]
+    [InlineData(WorkOrderStatus.InRepair)]
+    public async Task StartDiagnosisAsync_FromNonReceivedStatus_ThrowsInvalidTransitionException(WorkOrderStatus status)
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = status, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidTransitionException>(() =>
+            service.StartDiagnosisAsync(workOrder.Id, new StartDiagnosisRequest(), actorUserId: userId));
+    }
+
+    [Fact]
+    public async Task StartDiagnosisAsync_WritesExactlyOneStatusHistoryRow()
+    {
+        var (service, db, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await service.StartDiagnosisAsync(workOrder.Id, new StartDiagnosisRequest(), actorUserId: userId);
+
+        var history = db.WorkOrderStatusHistories.Where(h => h.WorkOrderId == workOrder.Id).ToList();
+        Assert.Single(history);
+        Assert.Equal(WorkOrderStatus.Received, history[0].FromStatus);
+        Assert.Equal(WorkOrderStatus.Diagnosing, history[0].ToStatus);
+    }
 }

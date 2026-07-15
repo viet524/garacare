@@ -81,6 +81,39 @@ public class WorkOrderService : IWorkOrderService
         return ToResponse(workOrder, hasOpenWorkOrderWarning: openWorkOrders.Count > 0);
     }
 
+    public async Task<WorkOrderResponse> StartDiagnosisAsync(int workOrderId, StartDiagnosisRequest request, int actorUserId, CancellationToken cancellationToken = default)
+    {
+        var workOrder = await _unitOfWork.Repository<WorkOrder>().GetByIdAsync(workOrderId, cancellationToken)
+            ?? throw new EntityNotFoundException("Không tìm thấy work order.");
+
+        if (workOrder.Status != WorkOrderStatus.Received)
+        {
+            throw new InvalidTransitionException($"Không thể bắt đầu chẩn đoán từ trạng thái {workOrder.Status}.");
+        }
+
+        var now = _dateTimeProvider.UtcNow;
+        workOrder.Status = WorkOrderStatus.Diagnosing;
+        if (!string.IsNullOrWhiteSpace(request.DiagnosisNote))
+        {
+            workOrder.DiagnosisNote = request.DiagnosisNote;
+        }
+        _unitOfWork.Repository<WorkOrder>().Update(workOrder);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _unitOfWork.Repository<WorkOrderStatusHistory>().AddAsync(new WorkOrderStatusHistory
+        {
+            WorkOrderId = workOrder.Id,
+            FromStatus = WorkOrderStatus.Received,
+            ToStatus = WorkOrderStatus.Diagnosing,
+            ChangedByUserId = actorUserId,
+            ApprovedViaToken = false,
+            ChangedAt = now,
+        }, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return ToResponse(workOrder);
+    }
+
     private static WorkOrderResponse ToResponse(WorkOrder workOrder, bool hasOpenWorkOrderWarning = false) => new()
     {
         Id = workOrder.Id,
