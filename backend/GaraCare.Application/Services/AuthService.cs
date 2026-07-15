@@ -101,7 +101,7 @@ public class AuthService : IAuthService
             throw new ForbiddenActionException("Tài khoản chưa xác minh email. Vui lòng kiểm tra email hoặc yêu cầu gửi lại mã.");
         }
 
-        return BuildAuthResponse(user);
+        return await BuildAuthResponseAsync(user, cancellationToken);
     }
 
     public async Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default)
@@ -127,7 +127,7 @@ public class AuthService : IAuthService
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        return BuildAuthResponse(user);
+        return await BuildAuthResponseAsync(user, cancellationToken);
     }
 
     public async Task<MessageResponse> ResendVerificationAsync(ResendVerificationRequest request, CancellationToken cancellationToken = default)
@@ -205,17 +205,76 @@ public class AuthService : IAuthService
         return new MessageResponse { Message = "Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại." };
     }
 
+    public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
+    {
+        var now = _dateTimeProvider.UtcNow;
+        var tokenHash = RefreshTokenGenerator.Hash(request.RefreshToken);
+
+        var matches = await _unitOfWork.Repository<RefreshToken>().FindAsync(
+            t => t.TokenHash == tokenHash && t.RevokedAt == null && t.ExpiresAt > now,
+            cancellationToken);
+        var refreshToken = matches.FirstOrDefault()
+            ?? throw new InvalidCredentialsException("Refresh token không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+
+        var user = await _unitOfWork.Repository<User>().GetByIdAsync(refreshToken.UserId, cancellationToken)
+            ?? throw new InvalidCredentialsException("Tài khoản không còn tồn tại. Vui lòng đăng nhập lại.");
+
+        // Rotation: thu hồi refresh token cũ ngay khi dùng, tránh replay nếu bị đánh cắp.
+        refreshToken.RevokedAt = now;
+        _unitOfWork.Repository<RefreshToken>().Update(refreshToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return await BuildAuthResponseAsync(user, cancellationToken);
+    }
+
+    public async Task LogoutAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
+    {
+        var tokenHash = RefreshTokenGenerator.Hash(request.RefreshToken);
+        var matches = await _unitOfWork.Repository<RefreshToken>().FindAsync(
+            t => t.TokenHash == tokenHash && t.RevokedAt == null,
+            cancellationToken);
+        var refreshToken = matches.FirstOrDefault();
+        if (refreshToken is null)
+        {
+            // Token không tồn tại/đã thu hồi rồi — coi như đăng xuất thành công, không báo lỗi.
+            return;
+        }
+
+        refreshToken.RevokedAt = _dateTimeProvider.UtcNow;
+        _unitOfWork.Repository<RefreshToken>().Update(refreshToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken)
     {
         var matches = await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email, cancellationToken);
         return matches.FirstOrDefault();
     }
 
-    private AuthResponse BuildAuthResponse(User user)
+    private async Task<AuthResponse> BuildAuthResponseAsync(User user, CancellationToken cancellationToken)
     {
+        int? customerId = null;
+        if (user.Role == UserRole.Customer)
+        {
+            var customers = await _unitOfWork.Repository<Customer>().FindAsync(c => c.UserId == user.Id, cancellationToken);
+            customerId = customers.FirstOrDefault()?.Id;
+        }
+
+        var rawRefreshToken = _tokenService.GenerateRefreshToken();
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = RefreshTokenGenerator.Hash(rawRefreshToken),
+            CreatedAt = _dateTimeProvider.UtcNow,
+            ExpiresAt = _dateTimeProvider.UtcNow.Add(_tokenService.RefreshTokenLifetime),
+        };
+        await _unitOfWork.Repository<RefreshToken>().AddAsync(refreshToken, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         return new AuthResponse
         {
-            Token = _tokenService.GenerateToken(user),
+            Token = _tokenService.GenerateToken(user, customerId),
+            RefreshToken = rawRefreshToken,
             Role = user.Role.ToString(),
             UserId = user.Id,
             FullName = user.FullName,

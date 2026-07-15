@@ -10,4 +10,11 @@ public interface IAuthService
     Task<MessageResponse> ResendVerificationAsync(ResendVerificationRequest request, CancellationToken cancellationToken = default);
     Task<MessageResponse> ForgotPasswordAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default);
     Task<MessageResponse> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default);
+
+    // Access token hết hạn (rất nhanh) → FE gọi endpoint này bằng refresh token để lấy cặp
+    // token mới, không bắt đăng nhập lại. Refresh token cũ bị thu hồi ngay (rotation).
+    Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
+
+    // Thu hồi refresh token lúc đăng xuất — không cho dùng lại kể cả khi chưa hết hạn tự nhiên.
+    Task LogoutAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
 }

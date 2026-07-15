@@ -39,9 +39,13 @@ Service Layer thực hiện đúng thứ tự sau (một hàm dùng chung, khôn
 
 - Auth (đăng nhập bằng Email, không phải Username — xem `03-data-model.md`):
   `POST /auth/register`, `POST /auth/login`, `POST /auth/verify-email`,
-  `POST /auth/resend-verification`, `POST /auth/forgot-password`, `POST /auth/reset-password`.
+  `POST /auth/resend-verification`, `POST /auth/forgot-password`, `POST /auth/reset-password`,
+  `POST /auth/refresh-token`, `POST /auth/logout`.
   Đăng ký KHÔNG trả JWT ngay — tài khoản chỉ đăng nhập được sau khi xác minh email bằng mã
   gửi qua `verify-email`. `forgot-password`/`reset-password` dùng cùng cơ chế mã (chữ+số) gửi qua email.
+  `login`/`verify-email`/`refresh-token` đều trả cặp `token` (access, sống ngắn) + `refreshToken`
+  (sống dài — xem `03-data-model.md` § RefreshToken). `refresh-token` rotate: phát hành cặp token
+  mới, thu hồi ngay refresh token cũ. `logout` thu hồi refresh token hiện tại ở server.
 - CRUD Customer/Vehicle (tra cứu theo số điện thoại là thao tác quan trọng trong UC-02).
 - Tạo WorkOrder walk-in (UC-02) — không đi qua Appointment.
 - Thêm/sửa `QuotationItem` (chỉ khi WorkOrder ở `Diagnosing`/`QuotePending` và **chưa** Approved — xem ràng buộc ở `01-business-spec.md` §5).

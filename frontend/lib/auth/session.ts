@@ -9,6 +9,7 @@ const STORAGE_KEY = "garacare.session";
 
 export interface Session {
   token: string;
+  refreshToken: string;
   role: AuthResponse["role"];
   userId: number;
   fullName: string;
@@ -37,4 +38,20 @@ export function clearSession(): void {
 
 export function homePathForRole(role: AuthResponse["role"]): string {
   return role === "Customer" ? "/customer" : "/staff";
+}
+
+// Đọc claim "exp" của JWT (không xác thực chữ ký — chỉ dùng để quyết định có nên chủ động
+// refresh trước khi render trang hay không; backend vẫn là nơi xác thực token thật sự).
+export function isTokenExpired(token: string): boolean {
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(padded)) as { exp?: number };
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    // Token không đọc được (hỏng/không đúng định dạng) — coi như hết hạn để an toàn.
+    return true;
+  }
 }

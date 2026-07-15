@@ -30,7 +30,11 @@ builder.Services.AddAuthentication(options =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSection["Issuer"],
             ValidAudience = jwtSection["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            // Mặc định ASP.NET Core cho phép lệch 5 phút giữa hạn token và giờ kiểm tra — với
+            // access token sống rất ngắn (phút), dung sai này khiến token "hết hạn" vẫn được
+            // chấp nhận thêm gần 5 phút. Tắt hẳn để hạn dùng đúng như cấu hình.
+            ClockSkew = TimeSpan.Zero
         };
     });
 

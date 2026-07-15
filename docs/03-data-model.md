@@ -51,6 +51,11 @@ Nguồn nghiệp vụ: SRS mục 6. Đã điều chỉnh kiểu dữ liệu cho 
 ### Notification
 `Id, CustomerId (FK), WorkOrderId (FK, nullable), AppointmentId (FK, nullable), Type (QuoteReady/Delayed/StatusChanged/AppointmentConfirmed), Message, EmailSentSuccessfully (bool), IsRead, CreatedAt`
 
+### RefreshToken
+`Id, UserId (FK), TokenHash, ExpiresAt, CreatedAt, RevokedAt (nullable)`
+
+> Cặp access token (JWT, sống rất ngắn — phút) + refresh token (chuỗi ngẫu nhiên, sống dài — ngày) thay cho 1 JWT sống lâu duy nhất, giảm thời gian 1 token bị đánh cắp còn dùng được. `TokenHash` lưu SHA-256 của refresh token, không lưu giá trị thô — rò rỉ DB không lộ được token dùng được. `RevokedAt` set khi: (a) token được dùng để refresh (rotation — mỗi lần refresh phát hành token mới, thu hồi token cũ ngay, chặn replay), hoặc (b) người dùng đăng xuất. Access token hết hạn thì FE gọi `POST /auth/refresh-token`; refresh token cũng hết hạn/bị thu hồi thì mới bắt đăng nhập lại.
+
 ## Quan hệ chính
 
 - Customer **1–N** Vehicle

@@ -48,7 +48,8 @@ public class AuthServiceTests
             Issuer = "GaraCare.Tests",
             Audience = "GaraCare.Tests.Client",
             Key = "unit-test-signing-key-at-least-32-chars-long",
-            ExpiryMinutes = 60,
+            AccessTokenExpiryMinutes = 60,
+            RefreshTokenExpiryDays = 7,
         });
         var passwordHasher = new BCryptPasswordHasher();
         var tokenService = new JwtTokenService(jwtSettings, clock);
@@ -173,6 +174,114 @@ public class AuthServiceTests
         // Sau khi verify, login phải thành công (không còn bị chặn ForbiddenActionException).
         var loginResult = await service.LoginAsync(new LoginRequest { Email = "verify@example.com", Password = "matkhau123" });
         Assert.NotEmpty(loginResult.Token);
+    }
+
+    [Fact]
+    public async Task LoginAsync_CustomerRole_TokenContainsCustomerIdClaim()
+    {
+        var (service, db, email, _) = CreateService();
+        await service.RegisterCustomerAsync(new RegisterCustomerRequest
+        {
+            FullName = "A",
+            Phone = "0900000000",
+            Email = "claimtest@example.com",
+            Password = "matkhau123",
+            ConfirmPassword = "matkhau123",
+        });
+        var code = ExtractCodeFromEmailBody(email.LastBody!);
+        await service.VerifyEmailAsync(new VerifyEmailRequest { Email = "claimtest@example.com", Code = code });
+
+        var result = await service.LoginAsync(new LoginRequest { Email = "claimtest@example.com", Password = "matkhau123" });
+
+        var customer = await db.Customers.SingleAsync(c => c.Email == "claimtest@example.com");
+        var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(result.Token);
+        var customerIdClaim = jwt.Claims.Single(c => c.Type == "CustomerId").Value;
+        Assert.Equal(customer.Id.ToString(), customerIdClaim);
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_ValidToken_ReturnsNewTokenPairAndRevokesOld()
+    {
+        var (service, db, email, _) = CreateService();
+        await service.RegisterCustomerAsync(new RegisterCustomerRequest
+        {
+            FullName = "A",
+            Phone = "0900000000",
+            Email = "refresh@example.com",
+            Password = "matkhau123",
+            ConfirmPassword = "matkhau123",
+        });
+        var code = ExtractCodeFromEmailBody(email.LastBody!);
+        var loginResult = await service.VerifyEmailAsync(new VerifyEmailRequest { Email = "refresh@example.com", Code = code });
+
+        var refreshed = await service.RefreshTokenAsync(new RefreshTokenRequest { RefreshToken = loginResult.RefreshToken });
+
+        Assert.NotEmpty(refreshed.Token);
+        Assert.NotEmpty(refreshed.RefreshToken);
+        Assert.NotEqual(loginResult.RefreshToken, refreshed.RefreshToken);
+
+        var oldTokenHash = RefreshTokenGenerator.Hash(loginResult.RefreshToken);
+        var oldEntity = await db.RefreshTokens.SingleAsync(t => t.TokenHash == oldTokenHash);
+        Assert.NotNull(oldEntity.RevokedAt);
+
+        // Refresh token cũ đã bị thu hồi (rotation) — dùng lại phải bị chặn.
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            service.RefreshTokenAsync(new RefreshTokenRequest { RefreshToken = loginResult.RefreshToken }));
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_UnknownToken_ThrowsInvalidCredentialsException()
+    {
+        var (service, _, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            service.RefreshTokenAsync(new RefreshTokenRequest { RefreshToken = "khong-ton-tai" }));
+    }
+
+    [Fact]
+    public async Task RefreshTokenAsync_ExpiredToken_ThrowsInvalidCredentialsException()
+    {
+        var (service, _, email, clock) = CreateService();
+        await service.RegisterCustomerAsync(new RegisterCustomerRequest
+        {
+            FullName = "A",
+            Phone = "0900000000",
+            Email = "expiredrefresh@example.com",
+            Password = "matkhau123",
+            ConfirmPassword = "matkhau123",
+        });
+        var code = ExtractCodeFromEmailBody(email.LastBody!);
+        var loginResult = await service.VerifyEmailAsync(new VerifyEmailRequest { Email = "expiredrefresh@example.com", Code = code });
+
+        clock.UtcNow = clock.UtcNow.AddDays(8); // quá hạn 7 ngày
+
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            service.RefreshTokenAsync(new RefreshTokenRequest { RefreshToken = loginResult.RefreshToken }));
+    }
+
+    [Fact]
+    public async Task LogoutAsync_RevokesRefreshToken()
+    {
+        var (service, db, email, _) = CreateService();
+        await service.RegisterCustomerAsync(new RegisterCustomerRequest
+        {
+            FullName = "A",
+            Phone = "0900000000",
+            Email = "logout@example.com",
+            Password = "matkhau123",
+            ConfirmPassword = "matkhau123",
+        });
+        var code = ExtractCodeFromEmailBody(email.LastBody!);
+        var loginResult = await service.VerifyEmailAsync(new VerifyEmailRequest { Email = "logout@example.com", Code = code });
+
+        await service.LogoutAsync(new RefreshTokenRequest { RefreshToken = loginResult.RefreshToken });
+
+        var tokenHash = RefreshTokenGenerator.Hash(loginResult.RefreshToken);
+        var entity = await db.RefreshTokens.SingleAsync(t => t.TokenHash == tokenHash);
+        Assert.NotNull(entity.RevokedAt);
+
+        await Assert.ThrowsAsync<InvalidCredentialsException>(() =>
+            service.RefreshTokenAsync(new RefreshTokenRequest { RefreshToken = loginResult.RefreshToken }));
     }
 
     [Fact]

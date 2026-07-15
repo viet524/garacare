@@ -35,9 +35,14 @@ export interface ResetPasswordRequest {
 
 export interface AuthResponse {
   token: string;
+  refreshToken: string;
   role: "Customer" | "Staff" | "Technician" | "Admin";
   userId: number;
   fullName: string;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
 }
 
 export interface MessageResponse {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { logout as logoutApi } from "@/lib/api/auth";
 import { clearSession, getSession } from "@/lib/auth/session";
 import styles from "./TopNav.module.css";
 
@@ -26,6 +27,10 @@ export function TopNav({ unreadCount = 0 }: TopNavProps) {
   }, []);
 
   function logout() {
+    const refreshToken = getSession()?.refreshToken;
+    if (refreshToken) {
+      logoutApi({ refreshToken }).catch(() => {});
+    }
     clearSession();
     router.replace("/");
   }

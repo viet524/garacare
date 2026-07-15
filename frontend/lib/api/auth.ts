@@ -4,6 +4,7 @@ import type {
   ForgotPasswordRequest,
   LoginRequest,
   MessageResponse,
+  RefreshTokenRequest,
   RegisterCustomerRequest,
   ResendVerificationRequest,
   ResetPasswordRequest,
@@ -32,4 +33,12 @@ export function forgotPassword(request: ForgotPasswordRequest) {
 
 export function resetPassword(request: ResetPasswordRequest) {
   return apiFetch<MessageResponse>("/api/auth/reset-password", { method: "POST", body: request });
+}
+
+export function refreshToken(request: RefreshTokenRequest) {
+  return apiFetch<AuthResponse>("/api/auth/refresh-token", { method: "POST", body: request });
+}
+
+export function logout(request: RefreshTokenRequest) {
+  return apiFetch<void>("/api/auth/logout", { method: "POST", body: request });
 }

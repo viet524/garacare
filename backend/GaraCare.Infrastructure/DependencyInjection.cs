@@ -34,6 +34,10 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
 
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IVehicleService, VehicleService>();
+        services.AddScoped<IWorkOrderService, WorkOrderService>();
+
         return services;
     }
 }

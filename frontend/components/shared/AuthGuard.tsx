@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSession, homePathForRole, type Session } from "@/lib/auth/session";
+import { refreshToken as refreshTokenApi } from "@/lib/api/auth";
+import { clearSession, getSession, homePathForRole, isTokenExpired, saveSession, type Session } from "@/lib/auth/session";
 
 interface AuthGuardProps {
   allowedRoles: Session["role"][];
@@ -18,17 +19,44 @@ export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const current = getSession();
-    if (!current) {
-      router.replace("/");
-      return;
+    let cancelled = false;
+
+    async function verify() {
+      let current = getSession();
+      if (!current) {
+        router.replace("/");
+        return;
+      }
+
+      // Access token đã hết hạn ngay lúc mở trang (VD đóng app nhiều ngày rồi mở lại) — chủ
+      // động refresh trước khi render, thay vì hiện nội dung 1 khung hình rồi mới phát hiện
+      // qua 1 request API bị 401 (client.ts vẫn tự refresh khi đó, nhưng chậm hơn 1 nhịp).
+      if (isTokenExpired(current.token)) {
+        try {
+          current = await refreshTokenApi({ refreshToken: current.refreshToken });
+          saveSession(current);
+        } catch {
+          clearSession();
+          if (!cancelled) router.replace("/");
+          return;
+        }
+      }
+
+      if (cancelled) return;
+
+      if (!allowedRoles.includes(current.role)) {
+        router.replace(homePathForRole(current.role));
+        return;
+      }
+
+      setSession(current);
+      setChecked(true);
     }
-    if (!allowedRoles.includes(current.role)) {
-      router.replace(homePathForRole(current.role));
-      return;
-    }
-    setSession(current);
-    setChecked(true);
+
+    verify();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
