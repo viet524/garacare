@@ -368,4 +368,63 @@ public class WorkOrderServiceTests
             service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId));
         Assert.Contains("resend-quote", ex.Message);
     }
+
+    [Theory]
+    [InlineData(WorkOrderStatus.Diagnosing)]
+    [InlineData(WorkOrderStatus.Received)]
+    [InlineData(WorkOrderStatus.InRepair)]
+    public async Task ResendQuoteAsync_NotQuotePending_ThrowsInvalidTransitionException(WorkOrderStatus status)
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = status, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidTransitionException>(() => service.ResendQuoteAsync(workOrder.Id, actorUserId: userId));
+    }
+
+    [Fact]
+    public async Task ResendQuoteAsync_QuotePending_GeneratesNewTokenAndDoesNotWriteStatusHistory()
+    {
+        var (service, db, clock, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder
+        {
+            VehicleId = vehicleId,
+            CreatedByUserId = userId,
+            Status = WorkOrderStatus.QuotePending,
+            ReceivedDate = DateTime.UtcNow,
+            ApprovalToken = "old-token",
+            ApprovalTokenExpiresAt = clock.UtcNow.AddHours(1),
+        };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+        clock.UtcNow = clock.UtcNow.AddHours(10);
+
+        var result = await service.ResendQuoteAsync(workOrder.Id, actorUserId: userId);
+
+        Assert.Equal("QuotePending", result.Status);
+        var updated = await db.WorkOrders.FindAsync(workOrder.Id);
+        Assert.NotEqual("old-token", updated!.ApprovalToken);
+        Assert.Equal(clock.UtcNow.AddHours(72), updated.ApprovalTokenExpiresAt);
+        Assert.Empty(db.WorkOrderStatusHistories.Where(h => h.WorkOrderId == workOrder.Id));
+    }
+
+    [Fact]
+    public async Task ResendQuoteAsync_QuotePending_SendsQuoteReadyNotificationAgain()
+    {
+        var (service, db, _, email) = CreateService();
+        var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
+        db.Customers.First(c => c.Id == customerId).Email = "customer@example.com";
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.QuotePending, ReceivedDate = DateTime.UtcNow, ApprovalToken = "old-token" };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await service.ResendQuoteAsync(workOrder.Id, actorUserId: userId);
+
+        var notifications = db.Notifications.Where(n => n.WorkOrderId == workOrder.Id).ToList();
+        Assert.Single(notifications);
+        Assert.Equal("customer@example.com", email.LastToEmail);
+    }
 }

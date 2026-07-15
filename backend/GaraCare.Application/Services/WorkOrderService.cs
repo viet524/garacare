@@ -169,6 +169,31 @@ public class WorkOrderService : IWorkOrderService
         return ToResponse(workOrder);
     }
 
+    public async Task<WorkOrderResponse> ResendQuoteAsync(int workOrderId, int actorUserId, CancellationToken cancellationToken = default)
+    {
+        var workOrder = await _unitOfWork.Repository<WorkOrder>().GetByIdAsync(workOrderId, cancellationToken)
+            ?? throw new EntityNotFoundException("Không tìm thấy work order.");
+
+        if (workOrder.Status != WorkOrderStatus.QuotePending)
+        {
+            throw new InvalidTransitionException(
+                $"Chỉ có thể gửi lại báo giá khi WorkOrder đang ở QuotePending (hiện tại: {workOrder.Status}).");
+        }
+
+        var now = _dateTimeProvider.UtcNow;
+        workOrder.ApprovalToken = RandomNumberGenerator.GetHexString(32);
+        workOrder.ApprovalTokenExpiresAt = now.AddHours(72);
+        workOrder.ApprovalTokenUsedAt = null;
+        _unitOfWork.Repository<WorkOrder>().Update(workOrder);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Resend quote cho WorkOrder {WorkOrderId} bởi User {ActorUserId}", workOrder.Id, actorUserId);
+
+        await NotifyQuoteReadyAsync(workOrder, cancellationToken);
+
+        return ToResponse(workOrder);
+    }
+
     private async Task NotifyQuoteReadyAsync(WorkOrder workOrder, CancellationToken cancellationToken)
     {
         var vehicle = await _unitOfWork.Repository<Vehicle>().GetByIdAsync(workOrder.VehicleId, cancellationToken);
