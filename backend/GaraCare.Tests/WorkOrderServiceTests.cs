@@ -1,0 +1,115 @@
+using GaraCare.Application.Exceptions;
+using GaraCare.Application.Services;
+using GaraCare.Domain.Entities;
+using GaraCare.Domain.Enums;
+using GaraCare.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace GaraCare.Tests;
+
+public class WorkOrderServiceTests
+{
+    private static (WorkOrderService Service, GaraCareDbContext Db) CreateService()
+    {
+        var options = new DbContextOptionsBuilder<GaraCareDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var db = new GaraCareDbContext(options);
+        var unitOfWork = new UnitOfWork(db);
+        return (new WorkOrderService(unitOfWork), db);
+    }
+
+    private static async Task<(int VehicleId, int UserId, int CustomerId)> SeedVehicleAsync(GaraCareDbContext db)
+    {
+        var user = new User { Username = "staff1", PasswordHash = "hash", FullName = "Staff 1", Role = UserRole.Staff, IsEmailVerified = true };
+        db.Users.Add(user);
+        var customer = new Customer { FullName = "Khách A", Phone = "0900000000" };
+        db.Customers.Add(customer);
+        await db.SaveChangesAsync();
+        var vehicle = new Vehicle { CustomerId = customer.Id, LicensePlate = "51A-12345" };
+        db.Vehicles.Add(vehicle);
+        await db.SaveChangesAsync();
+        return (vehicle.Id, user.Id, customer.Id);
+    }
+
+    [Fact]
+    public async Task GetHistoryByVehicleAsync_VehicleNotFound_ThrowsEntityNotFoundException()
+    {
+        var (service, _) = CreateService();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() => service.GetHistoryByVehicleAsync(999));
+    }
+
+    [Fact]
+    public async Task GetHistoryByVehicleAsync_NoWorkOrders_ReturnsEmptyList()
+    {
+        var (service, db) = CreateService();
+        var (vehicleId, _, _) = await SeedVehicleAsync(db);
+
+        var result = await service.GetHistoryByVehicleAsync(vehicleId);
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetHistoryByVehicleAsync_OwnerCustomer_ReturnsHistory()
+    {
+        var (service, db) = CreateService();
+        var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
+        db.WorkOrders.Add(new WorkOrder
+        {
+            VehicleId = vehicleId,
+            CreatedByUserId = userId,
+            Status = WorkOrderStatus.Delivered,
+            ReceivedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            TotalAmount = 100,
+        });
+        await db.SaveChangesAsync();
+
+        var result = await service.GetHistoryByVehicleAsync(vehicleId, requestingCustomerId: customerId);
+
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public async Task GetHistoryByVehicleAsync_NonOwnerCustomer_ThrowsForbiddenActionException()
+    {
+        var (service, db) = CreateService();
+        var (vehicleId, _, customerId) = await SeedVehicleAsync(db);
+        var otherCustomerId = customerId + 999;
+
+        await Assert.ThrowsAsync<ForbiddenActionException>(() =>
+            service.GetHistoryByVehicleAsync(vehicleId, requestingCustomerId: otherCustomerId));
+    }
+
+    [Fact]
+    public async Task GetHistoryByVehicleAsync_OrdersByReceivedDateDescending()
+    {
+        var (service, db) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        db.WorkOrders.AddRange(
+            new WorkOrder
+            {
+                VehicleId = vehicleId,
+                CreatedByUserId = userId,
+                Status = WorkOrderStatus.Delivered,
+                ReceivedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                TotalAmount = 100,
+            },
+            new WorkOrder
+            {
+                VehicleId = vehicleId,
+                CreatedByUserId = userId,
+                Status = WorkOrderStatus.Received,
+                ReceivedDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                TotalAmount = 200,
+            });
+        await db.SaveChangesAsync();
+
+        var result = await service.GetHistoryByVehicleAsync(vehicleId);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(200, result[0].TotalAmount);
+        Assert.Equal(100, result[1].TotalAmount);
+    }
+}
