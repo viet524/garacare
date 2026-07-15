@@ -7,6 +7,7 @@ interface VerifyEmailViewProps {
   code: string;
   setCode: (v: string) => void;
   error: string | null;
+  fieldErrors: Record<string, string>;
   info: string | null;
   isSubmitting: boolean;
   isResending: boolean;
@@ -14,7 +15,7 @@ interface VerifyEmailViewProps {
   resend: () => void;
 }
 
-export function VerifyEmailView({ email, setEmail, code, setCode, error, info, isSubmitting, isResending, submit, resend }: VerifyEmailViewProps) {
+export function VerifyEmailView({ email, setEmail, code, setCode, error, fieldErrors, info, isSubmitting, isResending, submit, resend }: VerifyEmailViewProps) {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -27,18 +28,20 @@ export function VerifyEmailView({ email, setEmail, code, setCode, error, info, i
         <form onSubmit={submit}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">Email</label>
-            <input id="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="email" type="email" className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`} value={email} onChange={(e) => setEmail(e.target.value)} />
+            {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="code">Mã xác minh</label>
             <input
               id="code"
-              className={`${styles.input} ${styles.codeInput}`}
+              className={`${styles.input} ${styles.codeInput} ${fieldErrors.code ? styles.inputError : ""}`}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               maxLength={6}
               placeholder="AB12CD"
             />
+            {fieldErrors.code && <p className={styles.fieldError}>{fieldErrors.code}</p>}
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           {info && <p className={styles.infoText}>{info}</p>}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import * as authApi from "@/lib/api/auth";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, getFieldErrors } from "@/lib/api/client";
 
 // Field khớp RegisterCustomerRequest backend: FullName, Phone, Email, Password, ConfirmPassword.
 // Đăng ký KHÔNG đăng nhập ngay — tài khoản cần xác minh email trước, nên điều hướng sang
@@ -16,25 +16,33 @@ export function useCustomerRegisterViewModel() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+    setFieldErrors({});
     if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp.");
+      setFieldErrors({ confirmPassword: "Mật khẩu xác nhận không khớp." });
       return;
     }
     setIsSubmitting(true);
-    setError(null);
     try {
       await authApi.register({ fullName, phone, email, password, confirmPassword });
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Không đăng ký được — kiểm tra lại kết nối mạng và thử lại.");
+      if (err instanceof ApiError && Object.keys(getFieldErrors(err)).length > 0) {
+        setFieldErrors(getFieldErrors(err));
+      } else if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Không đăng ký được — kiểm tra lại kết nối mạng và thử lại.");
+      }
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  return { fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, confirmPassword, setConfirmPassword, error, isSubmitting, submit };
+  return { fullName, setFullName, phone, setPhone, email, setEmail, password, setPassword, confirmPassword, setConfirmPassword, error, fieldErrors, isSubmitting, submit };
 }

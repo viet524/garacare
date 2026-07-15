@@ -11,12 +11,27 @@ interface ResetPasswordViewProps {
   confirmNewPassword: string;
   setConfirmNewPassword: (v: string) => void;
   error: string | null;
+  fieldErrors: Record<string, string>;
   isSubmitting: boolean;
   done: boolean;
   submit: (e: React.FormEvent) => void;
 }
 
-export function ResetPasswordView({ email, setEmail, code, setCode, newPassword, setNewPassword, confirmNewPassword, setConfirmNewPassword, error, isSubmitting, done, submit }: ResetPasswordViewProps) {
+export function ResetPasswordView({
+  email,
+  setEmail,
+  code,
+  setCode,
+  newPassword,
+  setNewPassword,
+  confirmNewPassword,
+  setConfirmNewPassword,
+  error,
+  fieldErrors,
+  isSubmitting,
+  done,
+  submit,
+}: ResetPasswordViewProps) {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -32,26 +47,30 @@ export function ResetPasswordView({ email, setEmail, code, setCode, newPassword,
           <form onSubmit={submit}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="email">Email</label>
-              <input id="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input id="email" type="email" className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`} value={email} onChange={(e) => setEmail(e.target.value)} />
+              {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="code">Mã đặt lại mật khẩu</label>
               <input
                 id="code"
-                className={`${styles.input} ${styles.codeInput}`}
+                className={`${styles.input} ${styles.codeInput} ${fieldErrors.code ? styles.inputError : ""}`}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 maxLength={6}
                 placeholder="AB12CD"
               />
+              {fieldErrors.code && <p className={styles.fieldError}>{fieldErrors.code}</p>}
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="newPassword">Mật khẩu mới</label>
-              <input id="newPassword" type="password" className={styles.input} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+              <input id="newPassword" type="password" className={`${styles.input} ${fieldErrors.newPassword ? styles.inputError : ""}`} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+              {fieldErrors.newPassword && <p className={styles.fieldError}>{fieldErrors.newPassword}</p>}
             </div>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="confirmNewPassword">Xác nhận mật khẩu mới</label>
-              <input id="confirmNewPassword" type="password" className={styles.input} value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} autoComplete="new-password" />
+              <input id="confirmNewPassword" type="password" className={`${styles.input} ${fieldErrors.confirmNewPassword ? styles.inputError : ""}`} value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} autoComplete="new-password" />
+              {fieldErrors.confirmNewPassword && <p className={styles.fieldError}>{fieldErrors.confirmNewPassword}</p>}
             </div>
             {error && <p className={styles.errorText}>{error}</p>}
             <Button type="submit" fullWidth disabled={isSubmitting}>

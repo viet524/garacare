@@ -9,13 +9,14 @@ interface LoginViewProps {
   password: string;
   setPassword: (v: string) => void;
   error: string | null;
+  fieldErrors: Record<string, string>;
   isSubmitting: boolean;
   submit: (e: React.FormEvent) => void;
 }
 
 // Điểm đăng nhập duy nhất cho toàn hệ thống — Customer và nội bộ (Staff/Technician/Admin)
 // dùng chung 1 form (Email + mật khẩu), điều hướng sau đăng nhập dựa theo Role trả về từ backend.
-export function LoginView({ email, setEmail, password, setPassword, error, isSubmitting, submit }: LoginViewProps) {
+export function LoginView({ email, setEmail, password, setPassword, error, fieldErrors, isSubmitting, submit }: LoginViewProps) {
   return (
     <div className={styles.split}>
       <div className={styles.brand}>
@@ -29,11 +30,27 @@ export function LoginView({ email, setEmail, password, setPassword, error, isSub
         <form className={styles.formCard} onSubmit={submit}>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="email">Email</label>
-            <input id="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+            <input
+              id="email"
+              type="email"
+              className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="password">Mật khẩu</label>
-            <input id="password" type="password" className={styles.input} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+            <input
+              id="password"
+              type="password"
+              className={`${styles.input} ${fieldErrors.password ? styles.inputError : ""}`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            {fieldErrors.password && <p className={styles.fieldError}>{fieldErrors.password}</p>}
           </div>
           {error && <p className={styles.errorText}>{error}</p>}
           <Button type="submit" fullWidth disabled={isSubmitting}>

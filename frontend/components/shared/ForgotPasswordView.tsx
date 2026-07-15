@@ -7,11 +7,12 @@ interface ForgotPasswordViewProps {
   setEmail: (v: string) => void;
   message: string | null;
   error: string | null;
+  fieldErrors: Record<string, string>;
   isSubmitting: boolean;
   submit: (e: React.FormEvent) => void;
 }
 
-export function ForgotPasswordView({ email, setEmail, message, error, isSubmitting, submit }: ForgotPasswordViewProps) {
+export function ForgotPasswordView({ email, setEmail, message, error, fieldErrors, isSubmitting, submit }: ForgotPasswordViewProps) {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
@@ -27,7 +28,8 @@ export function ForgotPasswordView({ email, setEmail, message, error, isSubmitti
           <form onSubmit={submit}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="email">Email</label>
-              <input id="email" type="email" className={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+              <input id="email" type="email" className={`${styles.input} ${fieldErrors.email ? styles.inputError : ""}`} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+              {fieldErrors.email && <p className={styles.fieldError}>{fieldErrors.email}</p>}
             </div>
             {error && <p className={styles.errorText}>{error}</p>}
             <Button type="submit" fullWidth disabled={isSubmitting}>

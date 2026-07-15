@@ -4,10 +4,10 @@ namespace GaraCare.Application.DTOs.Auth;
 
 public class LoginRequest
 {
-    [Required]
-    [EmailAddress]
+    [Required(ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
     public string Password { get; set; } = string.Empty;
 }
