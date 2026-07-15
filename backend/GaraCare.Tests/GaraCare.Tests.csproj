@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GaraCare.Api\GaraCare.Api.csproj" />
     <ProjectReference Include="..\GaraCare.Application\GaraCare.Application.csproj" />
     <ProjectReference Include="..\GaraCare.Domain\GaraCare.Domain.csproj" />
     <ProjectReference Include="..\GaraCare.Infrastructure\GaraCare.Infrastructure.csproj" />
