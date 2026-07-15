@@ -17,4 +17,6 @@ public interface IWorkOrderService
     Task<WorkOrderResponse> SendQuoteAsync(int workOrderId, SendQuoteRequest request, int actorUserId, CancellationToken cancellationToken = default);
 
     Task<WorkOrderResponse> ResendQuoteAsync(int workOrderId, int actorUserId, CancellationToken cancellationToken = default);
+
+    Task<WorkOrderDetailResponse> GetByIdAsync(int workOrderId, CancellationToken cancellationToken = default);
 }

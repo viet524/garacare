@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using GaraCare.Application.DTOs.QuotationItems;
 using GaraCare.Application.DTOs.Vehicles;
 using GaraCare.Application.DTOs.WorkOrders;
 using GaraCare.Application.Exceptions;
@@ -239,6 +240,44 @@ public class WorkOrderService : IWorkOrderService
         }, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<WorkOrderDetailResponse> GetByIdAsync(int workOrderId, CancellationToken cancellationToken = default)
+    {
+        var workOrder = await _unitOfWork.Repository<WorkOrder>().GetByIdAsync(workOrderId, cancellationToken)
+            ?? throw new EntityNotFoundException("Không tìm thấy work order.");
+
+        var items = await _unitOfWork.Repository<QuotationItem>().FindAsync(q => q.WorkOrderId == workOrderId, cancellationToken);
+
+        return new WorkOrderDetailResponse
+        {
+            Id = workOrder.Id,
+            VehicleId = workOrder.VehicleId,
+            Status = workOrder.Status.ToString(),
+            ReceivedDate = workOrder.ReceivedDate,
+            InitialDescription = workOrder.InitialDescription,
+            DiagnosisNote = workOrder.DiagnosisNote,
+            TotalAmount = workOrder.TotalAmount,
+            DiscountPercent = workOrder.DiscountPercent,
+            EstimatedCompletionDate = workOrder.EstimatedCompletionDate,
+            IsDelayed = workOrder.IsDelayed,
+            QuotationItems = items.Select(ToQuotationItemResponse).ToList(),
+        };
+    }
+
+    private static QuotationItemResponse ToQuotationItemResponse(QuotationItem item) => new()
+    {
+        Id = item.Id,
+        WorkOrderId = item.WorkOrderId,
+        PartId = item.PartId,
+        Type = item.Type,
+        Description = item.Description,
+        Quantity = item.Quantity,
+        UnitPrice = item.UnitPrice,
+        LineTotal = item.Quantity * item.UnitPrice,
+        IsApproved = item.IsApproved,
+        IsUsed = item.IsUsed,
+        LowStockWarning = false,
+    };
 
     private static WorkOrderResponse ToResponse(WorkOrder workOrder, bool hasOpenWorkOrderWarning = false) => new()
     {

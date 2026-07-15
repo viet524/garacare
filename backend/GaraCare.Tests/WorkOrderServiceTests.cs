@@ -427,4 +427,29 @@ public class WorkOrderServiceTests
         Assert.Single(notifications);
         Assert.Equal("customer@example.com", email.LastToEmail);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_WorkOrderNotFound_ThrowsEntityNotFoundException()
+    {
+        var (service, _, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() => service.GetByIdAsync(999));
+    }
+
+    [Fact]
+    public async Task GetByIdAsync_ReturnsWorkOrderWithQuotationItems()
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Diagnosing, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        db.QuotationItems.Add(new QuotationItem { WorkOrderId = workOrder.Id, Type = QuotationItemType.Labor, Description = "Công", Quantity = 1, UnitPrice = 100000 });
+        await db.SaveChangesAsync();
+
+        var result = await service.GetByIdAsync(workOrder.Id);
+
+        Assert.Equal("Diagnosing", result.Status);
+        Assert.Single(result.QuotationItems);
+        Assert.Equal("Công", result.QuotationItems[0].Description);
+    }
 }
