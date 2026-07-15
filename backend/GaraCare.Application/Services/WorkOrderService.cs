@@ -1,9 +1,11 @@
+using System.Security.Cryptography;
 using GaraCare.Application.DTOs.Vehicles;
 using GaraCare.Application.DTOs.WorkOrders;
 using GaraCare.Application.Exceptions;
 using GaraCare.Application.Interfaces;
 using GaraCare.Domain.Entities;
 using GaraCare.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace GaraCare.Application.Services;
 
@@ -11,11 +13,19 @@ public class WorkOrderService : IWorkOrderService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<WorkOrderService> _logger;
 
-    public WorkOrderService(IUnitOfWork unitOfWork, IDateTimeProvider dateTimeProvider)
+    public WorkOrderService(
+        IUnitOfWork unitOfWork,
+        IDateTimeProvider dateTimeProvider,
+        IEmailService emailService,
+        ILogger<WorkOrderService> logger)
     {
         _unitOfWork = unitOfWork;
         _dateTimeProvider = dateTimeProvider;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<WorkOrderSummaryResponse>> GetHistoryByVehicleAsync(int vehicleId, int? requestingCustomerId = null, CancellationToken cancellationToken = default)
@@ -112,6 +122,97 @@ public class WorkOrderService : IWorkOrderService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return ToResponse(workOrder);
+    }
+
+    public async Task<WorkOrderResponse> SendQuoteAsync(int workOrderId, SendQuoteRequest request, int actorUserId, CancellationToken cancellationToken = default)
+    {
+        var workOrder = await _unitOfWork.Repository<WorkOrder>().GetByIdAsync(workOrderId, cancellationToken)
+            ?? throw new EntityNotFoundException("Không tìm thấy work order.");
+
+        if (workOrder.Status != WorkOrderStatus.Diagnosing)
+        {
+            var hint = workOrder.Status == WorkOrderStatus.QuotePending
+                ? " Báo giá đã được gửi trước đó — dùng resend-quote để gửi lại link mới."
+                : string.Empty;
+            throw new InvalidTransitionException($"Không thể gửi báo giá từ trạng thái {workOrder.Status}.{hint}");
+        }
+
+        var items = await _unitOfWork.Repository<QuotationItem>().FindAsync(q => q.WorkOrderId == workOrderId, cancellationToken);
+        if (items.Count == 0)
+        {
+            throw new EmptyQuotationException("Chưa có hạng mục báo giá nào.");
+        }
+
+        var now = _dateTimeProvider.UtcNow;
+        workOrder.ApprovalToken = RandomNumberGenerator.GetHexString(32);
+        workOrder.ApprovalTokenExpiresAt = now.AddHours(72);
+        workOrder.ApprovalTokenUsedAt = null;
+        workOrder.EstimatedCompletionDate = request.EstimatedCompletionDate;
+        workOrder.QuoteSentAt = now;
+        workOrder.Status = WorkOrderStatus.QuotePending;
+        _unitOfWork.Repository<WorkOrder>().Update(workOrder);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _unitOfWork.Repository<WorkOrderStatusHistory>().AddAsync(new WorkOrderStatusHistory
+        {
+            WorkOrderId = workOrder.Id,
+            FromStatus = WorkOrderStatus.Diagnosing,
+            ToStatus = WorkOrderStatus.QuotePending,
+            ChangedByUserId = actorUserId,
+            ApprovedViaToken = false,
+            ChangedAt = now,
+        }, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await NotifyQuoteReadyAsync(workOrder, cancellationToken);
+
+        return ToResponse(workOrder);
+    }
+
+    private async Task NotifyQuoteReadyAsync(WorkOrder workOrder, CancellationToken cancellationToken)
+    {
+        var vehicle = await _unitOfWork.Repository<Vehicle>().GetByIdAsync(workOrder.VehicleId, cancellationToken);
+        var customer = vehicle is null
+            ? null
+            : await _unitOfWork.Repository<Customer>().GetByIdAsync(vehicle.CustomerId, cancellationToken);
+
+        if (customer is null)
+        {
+            return;
+        }
+
+        var message = $"Báo giá cho work order #{workOrder.Id} đã sẵn sàng, vui lòng xem và duyệt.";
+        var emailSent = false;
+        if (!string.IsNullOrWhiteSpace(customer.Email))
+        {
+            try
+            {
+                await _emailService.SendAsync(
+                    customer.Email,
+                    "Báo giá sửa xe từ GaraCare",
+                    $"<p>{message}</p><p>Mã duyệt: {workOrder.ApprovalToken}</p>",
+                    cancellationToken);
+                emailSent = true;
+            }
+            catch (Exception ex)
+            {
+                // Lỗi gửi email không được rollback transaction chính — chỉ log.
+                // Xem docs/01-business-spec.md §9.
+                _logger.LogWarning(ex, "Gửi email báo giá thất bại cho WorkOrder {WorkOrderId}", workOrder.Id);
+            }
+        }
+
+        await _unitOfWork.Repository<Notification>().AddAsync(new Notification
+        {
+            CustomerId = customer.Id,
+            WorkOrderId = workOrder.Id,
+            Type = NotificationType.QuoteReady,
+            Message = message,
+            EmailSentSuccessfully = emailSent,
+            IsRead = false,
+            CreatedAt = _dateTimeProvider.UtcNow,
+        }, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
     private static WorkOrderResponse ToResponse(WorkOrder workOrder, bool hasOpenWorkOrderWarning = false) => new()

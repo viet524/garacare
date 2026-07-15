@@ -5,12 +5,13 @@ using GaraCare.Domain.Entities;
 using GaraCare.Domain.Enums;
 using GaraCare.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace GaraCare.Tests;
 
 public class WorkOrderServiceTests
 {
-    private static (WorkOrderService Service, GaraCareDbContext Db, FakeDateTimeProvider Clock) CreateService()
+    private static (WorkOrderService Service, GaraCareDbContext Db, FakeDateTimeProvider Clock, FakeEmailService Email) CreateService()
     {
         var options = new DbContextOptionsBuilder<GaraCareDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -18,7 +19,8 @@ public class WorkOrderServiceTests
         var db = new GaraCareDbContext(options);
         var unitOfWork = new UnitOfWork(db);
         var clock = new FakeDateTimeProvider();
-        return (new WorkOrderService(unitOfWork, clock), db, clock);
+        var email = new FakeEmailService();
+        return (new WorkOrderService(unitOfWork, clock, email, NullLogger<WorkOrderService>.Instance), db, clock, email);
     }
 
     private static async Task<(int VehicleId, int UserId, int CustomerId)> SeedVehicleAsync(GaraCareDbContext db)
@@ -37,7 +39,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_VehicleNotFound_ThrowsEntityNotFoundException()
     {
-        var (service, _, _) = CreateService();
+        var (service, _, _, _) = CreateService();
 
         await Assert.ThrowsAsync<EntityNotFoundException>(() => service.GetHistoryByVehicleAsync(999));
     }
@@ -45,7 +47,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_NoWorkOrders_ReturnsEmptyList()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, _, _) = await SeedVehicleAsync(db);
 
         var result = await service.GetHistoryByVehicleAsync(vehicleId);
@@ -56,7 +58,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_OwnerCustomer_ReturnsHistory()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
         db.WorkOrders.Add(new WorkOrder
         {
@@ -76,7 +78,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_NonOwnerCustomer_ThrowsForbiddenActionException()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, _, customerId) = await SeedVehicleAsync(db);
         var otherCustomerId = customerId + 999;
 
@@ -87,7 +89,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task GetHistoryByVehicleAsync_OrdersByReceivedDateDescending()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         db.WorkOrders.AddRange(
             new WorkOrder
@@ -118,7 +120,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task CreateWalkInAsync_VehicleNotFound_ThrowsEntityNotFoundException()
     {
-        var (service, _, _) = CreateService();
+        var (service, _, _, _) = CreateService();
 
         await Assert.ThrowsAsync<EntityNotFoundException>(() =>
             service.CreateWalkInAsync(new CreateWalkInWorkOrderRequest { VehicleId = 999, InitialDescription = "Kêu lạ" }, actorUserId: 1));
@@ -127,7 +129,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task CreateWalkInAsync_NoOpenWorkOrder_CreatesWithoutWarning()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
 
         var result = await service.CreateWalkInAsync(
@@ -141,7 +143,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task CreateWalkInAsync_HasOpenWorkOrder_CreatesWithWarning()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         db.WorkOrders.Add(new WorkOrder
         {
@@ -162,7 +164,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task CreateWalkInAsync_DeliveredOrCancelledWorkOrder_DoesNotCountAsOpen()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         db.WorkOrders.Add(new WorkOrder
         {
@@ -183,7 +185,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task CreateWalkInAsync_WritesExactlyOneStatusHistoryRow()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
 
         var result = await service.CreateWalkInAsync(
@@ -199,7 +201,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task StartDiagnosisAsync_WorkOrderNotFound_ThrowsEntityNotFoundException()
     {
-        var (service, _, _) = CreateService();
+        var (service, _, _, _) = CreateService();
 
         await Assert.ThrowsAsync<EntityNotFoundException>(() =>
             service.StartDiagnosisAsync(999, new StartDiagnosisRequest(), actorUserId: 1));
@@ -208,7 +210,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task StartDiagnosisAsync_FromReceived_TransitionsToDiagnosing()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = DateTime.UtcNow };
         db.WorkOrders.Add(workOrder);
@@ -226,7 +228,7 @@ public class WorkOrderServiceTests
     [InlineData(WorkOrderStatus.InRepair)]
     public async Task StartDiagnosisAsync_FromNonReceivedStatus_ThrowsInvalidTransitionException(WorkOrderStatus status)
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = status, ReceivedDate = DateTime.UtcNow };
         db.WorkOrders.Add(workOrder);
@@ -239,7 +241,7 @@ public class WorkOrderServiceTests
     [Fact]
     public async Task StartDiagnosisAsync_WritesExactlyOneStatusHistoryRow()
     {
-        var (service, db, _) = CreateService();
+        var (service, db, _, _) = CreateService();
         var (vehicleId, userId, _) = await SeedVehicleAsync(db);
         var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = DateTime.UtcNow };
         db.WorkOrders.Add(workOrder);
@@ -251,5 +253,119 @@ public class WorkOrderServiceTests
         Assert.Single(history);
         Assert.Equal(WorkOrderStatus.Received, history[0].FromStatus);
         Assert.Equal(WorkOrderStatus.Diagnosing, history[0].ToStatus);
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_WorkOrderNotFound_ThrowsEntityNotFoundException()
+    {
+        var (service, _, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<EntityNotFoundException>(() =>
+            service.SendQuoteAsync(999, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: 1));
+    }
+
+    [Theory]
+    [InlineData(WorkOrderStatus.Received)]
+    [InlineData(WorkOrderStatus.InRepair)]
+    public async Task SendQuoteAsync_NotDiagnosing_ThrowsInvalidTransitionException(WorkOrderStatus status)
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = status, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidTransitionException>(() =>
+            service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId));
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_NoQuotationItems_ThrowsEmptyQuotationException()
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Diagnosing, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<EmptyQuotationException>(() =>
+            service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId));
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_ValidRequest_GeneratesTokenWith72HourExpiryAndTransitionsToQuotePending()
+    {
+        var (service, db, clock, _) = CreateService();
+        var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
+        db.Customers.First(c => c.Id == customerId).Email = "customer@example.com";
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Diagnosing, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        db.QuotationItems.Add(new QuotationItem { WorkOrderId = workOrder.Id, Type = QuotationItemType.Labor, Description = "Công", Quantity = 1, UnitPrice = 100000 });
+        await db.SaveChangesAsync();
+        var estimatedCompletion = clock.UtcNow.AddDays(2);
+
+        var result = await service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = estimatedCompletion }, actorUserId: userId);
+
+        Assert.Equal("QuotePending", result.Status);
+        var updated = await db.WorkOrders.FindAsync(workOrder.Id);
+        Assert.False(string.IsNullOrEmpty(updated!.ApprovalToken));
+        Assert.Equal(clock.UtcNow.AddHours(72), updated.ApprovalTokenExpiresAt);
+        Assert.Null(updated.ApprovalTokenUsedAt);
+
+        var history = db.WorkOrderStatusHistories.Where(h => h.WorkOrderId == workOrder.Id).ToList();
+        Assert.Single(history);
+        Assert.Equal(WorkOrderStatus.Diagnosing, history[0].FromStatus);
+        Assert.Equal(WorkOrderStatus.QuotePending, history[0].ToStatus);
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_ValidRequest_SendsQuoteReadyNotificationAndEmail()
+    {
+        var (service, db, _, email) = CreateService();
+        var (vehicleId, userId, customerId) = await SeedVehicleAsync(db);
+        var customer = db.Customers.First(c => c.Id == customerId);
+        customer.Email = "customer@example.com";
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Diagnosing, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        db.QuotationItems.Add(new QuotationItem { WorkOrderId = workOrder.Id, Type = QuotationItemType.Labor, Description = "Công", Quantity = 1, UnitPrice = 100000 });
+        await db.SaveChangesAsync();
+
+        await service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId);
+
+        var notification = db.Notifications.Single(n => n.WorkOrderId == workOrder.Id);
+        Assert.Equal(NotificationType.QuoteReady, notification.Type);
+        Assert.True(notification.EmailSentSuccessfully);
+        Assert.Equal("customer@example.com", email.LastToEmail);
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_CustomerHasNoEmail_StillCreatesNotification_EmailNotSent()
+    {
+        var (service, db, _, email) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Diagnosing, ReceivedDate = DateTime.UtcNow };
+        db.WorkOrders.Add(workOrder);
+        db.QuotationItems.Add(new QuotationItem { WorkOrderId = workOrder.Id, Type = QuotationItemType.Labor, Description = "Công", Quantity = 1, UnitPrice = 100000 });
+        await db.SaveChangesAsync();
+
+        await service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId);
+
+        var notification = db.Notifications.Single(n => n.WorkOrderId == workOrder.Id);
+        Assert.False(notification.EmailSentSuccessfully);
+        Assert.Null(email.LastToEmail);
+    }
+
+    [Fact]
+    public async Task SendQuoteAsync_CalledTwiceOnAlreadyQuotePending_ThrowsWithResendHint()
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var workOrder = new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.QuotePending, ReceivedDate = DateTime.UtcNow, ApprovalToken = "existing-token" };
+        db.WorkOrders.Add(workOrder);
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidTransitionException>(() =>
+            service.SendQuoteAsync(workOrder.Id, new SendQuoteRequest { EstimatedCompletionDate = DateTime.UtcNow.AddDays(3) }, actorUserId: userId));
+        Assert.Contains("resend-quote", ex.Message);
     }
 }
