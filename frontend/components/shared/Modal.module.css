@@ -1,0 +1,56 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 24, 26, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  padding: var(--space-4);
+}
+
+.panel {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+
+/* Dùng cho các trang theme tối (Staff — nền --steel). */
+.panelDark {
+  background: var(--steel-raised);
+  border: 1px solid var(--border-steel);
+  color: #EDEFEE;
+}
+.panelDark .closeBtn { color: #A9B0B4; }
+
+/* Dùng cho các trang theme sáng (Customer portal — nền --concrete). */
+.panelLight {
+  background: var(--concrete-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-paper);
+  color: var(--grease);
+}
+.panelLight .closeBtn { color: var(--grease); opacity: 0.6; }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+}

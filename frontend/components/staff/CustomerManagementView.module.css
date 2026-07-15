@@ -1,0 +1,16 @@
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5); }
+.title { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; font-size: 24px; font-weight: 700; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; max-width: 900px; }
+.table th { text-align: left; font-family: var(--font-display); text-transform: uppercase; font-size: 11px; color: #A9B0B4; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-steel); }
+.table td { padding: var(--space-3); border-bottom: 1px solid var(--border-steel); }
+.mono { font-family: var(--font-mono); }
+
+.badge { font-family: var(--font-display); text-transform: uppercase; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.badgeAccount { background: rgba(62, 124, 124, 0.2); color: var(--coolant-teal); }
+.badgeWalkIn { background: rgba(169, 176, 180, 0.15); color: #A9B0B4; }
+
+.input { font-family: var(--font-body); font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--border-steel); border-radius: 4px; background: var(--steel); color: #EDEFEE; }
+.formError { color: var(--brake-red); font-size: 12.5px; }
+.inputError { border-color: var(--brake-red); }
+.fieldError { color: var(--brake-red); font-size: 12px; }

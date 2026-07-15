@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { logout as logoutApi } from "@/lib/api/auth";
 import { clearSession, getSession } from "@/lib/auth/session";
 import styles from "./Sidebar.module.css";
 
@@ -10,6 +11,7 @@ const LINKS = [
   { href: "/staff", label: "Work Order" },
   { href: "/staff/check-in", label: "Check-in lịch hẹn" },
   { href: "/staff/intake", label: "Tiếp nhận xe" },
+  { href: "/staff/customers", label: "Khách hàng" },
   { href: "/staff/parts", label: "Phụ tùng" },
   { href: "/staff/reports/revenue", label: "Báo cáo" },
   { href: "/staff/users", label: "Nhân viên" },
@@ -26,6 +28,12 @@ export function StaffShell({ children, active }: { children: ReactNode; active?:
   }, []);
 
   function logout() {
+    const refreshToken = getSession()?.refreshToken;
+    // Thu hồi refresh token ở server (best-effort) — không chặn đăng xuất nếu request lỗi,
+    // vì client vẫn xoá session local ngay lập tức.
+    if (refreshToken) {
+      logoutApi({ refreshToken }).catch(() => {});
+    }
     clearSession();
     router.replace("/");
   }

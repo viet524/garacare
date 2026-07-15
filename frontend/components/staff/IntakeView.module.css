@@ -72,6 +72,9 @@
 .chipActive { background: var(--safety-amber); color: var(--grease); border-color: var(--safety-amber); }
 
 .notFound { color: #A9B0B4; font-size: 13.5px; }
+.formError { color: var(--brake-red); font-size: 12.5px; }
+.inputError { border-color: var(--brake-red); }
+.fieldError { color: var(--brake-red); font-size: 12px; }
 .newCustomerBtn {
   font-family: var(--font-display);
   text-transform: uppercase;

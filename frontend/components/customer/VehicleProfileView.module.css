@@ -17,3 +17,16 @@
 }
 .plate { font-family: var(--font-mono); font-size: 22px; font-weight: 700; }
 .meta { font-size: 13px; opacity: 0.65; }
+
+.input {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--concrete-raised);
+  color: var(--grease);
+}
+.formError { color: var(--brake-red); font-size: 12.5px; }
+.inputError { border-color: var(--brake-red); }
+.fieldError { color: var(--brake-red); font-size: 12px; }
