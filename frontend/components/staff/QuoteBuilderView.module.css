@@ -82,3 +82,12 @@
   font-size: 14px;
   color: #7FC3C3;
 }
+
+.error {
+  border: 1px solid var(--brake-red);
+  background: rgba(124, 62, 62, 0.15);
+  border-radius: 4px;
+  padding: var(--space-4);
+  font-size: 14px;
+  color: #E38A8A;
+}

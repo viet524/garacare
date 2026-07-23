@@ -55,6 +55,16 @@ function extractFieldErrors(data: unknown): Record<string, string> | undefined {
   return undefined;
 }
 
+// Không hiện mã lỗi HTTP thô (401/403/500...) ra UI — vừa không thân thiện với người dùng,
+// vừa cho kẻ tấn công manh mối để dò lỗi hệ thống. Map theo nhóm mã thành câu chữ chung chung.
+function defaultMessageForStatus(status: number): string {
+  if (status === 401) return "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
+  if (status === 403) return "Bạn không có quyền thực hiện thao tác này.";
+  if (status === 404) return "Không tìm thấy dữ liệu yêu cầu.";
+  if (status >= 500) return "Đã có lỗi xảy ra ở hệ thống, vui lòng thử lại sau.";
+  return "Yêu cầu không thực hiện được, vui lòng kiểm tra lại thông tin đã nhập.";
+}
+
 function extractErrorMessage(data: unknown, status: number): string {
   if (data && typeof data === "object") {
     const obj = data as Record<string, unknown>;
@@ -71,7 +81,7 @@ function extractErrorMessage(data: unknown, status: number): string {
       return obj.title;
     }
   }
-  return `Yêu cầu thất bại (mã lỗi ${status}). Vui lòng thử lại.`;
+  return defaultMessageForStatus(status);
 }
 
 async function rawFetch<T>(path: string, options: RequestOptions): Promise<T> {

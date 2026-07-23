@@ -16,6 +16,16 @@ const STATUS_OPTIONS: { value: WorkOrderStatus | "all"; label: string }[] = [
   { value: "Cancelled", label: "Đã huỷ" },
 ];
 
+// Received/Diagnosing chưa có gì để xem ở trang chi tiết (chưa có hạng mục báo giá) — bấm vào
+// mã WO ở 2 trạng thái này phải đưa thẳng Technician/Staff tới trang chẩn đoán & lập báo giá.
+const DIAGNOSIS_STATUSES = new Set<WorkOrderStatus>(["Received", "Diagnosing"]);
+
+function workOrderHref(wo: WorkOrderView): string {
+  return DIAGNOSIS_STATUSES.has(wo.status)
+    ? `/staff/workorders/${wo.id}/quote`
+    : `/staff/workorders/${wo.id}`;
+}
+
 interface WorkOrderListViewProps {
   tab: "list" | "calls";
   setTab: (t: "list" | "calls") => void;
@@ -25,9 +35,11 @@ interface WorkOrderListViewProps {
   followUpWorkOrders: WorkOrderView[];
   lateAppointments: AppointmentView[];
   callCount: number;
+  loading: boolean;
+  error: string | null;
 }
 
-export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, workOrders, followUpWorkOrders, lateAppointments, callCount }: WorkOrderListViewProps) {
+export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, workOrders, followUpWorkOrders, lateAppointments, callCount, loading, error }: WorkOrderListViewProps) {
   return (
     <div>
       <div className={styles.header}>
@@ -52,33 +64,36 @@ export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, 
               ))}
             </select>
           </div>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Mã WO</th>
-                <th>Biển số</th>
-                <th>Khách hàng</th>
-                <th>Trạng thái</th>
-                <th>Ngày nhận</th>
-                <th className={styles.right}>Tổng tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workOrders.map((wo) => (
-                <tr key={wo.id}>
-                  <td className={styles.mono}>
-                    <Link href={`/staff/workorders/${wo.id}`}>{wo.code}</Link>
-                  </td>
-                  <td className={styles.mono}>{wo.licensePlate}</td>
-                  <td>{wo.customerName}</td>
-                  <td><StatusBadge status={wo.status} onSteel /></td>
-                  <td className={styles.mono}>{wo.receivedDate}</td>
-                  <td className={`${styles.mono} ${styles.right}`}>{formatCurrency(wo.totalAmount)}</td>
+          {error && <p className={styles.empty}>{error}</p>}
+          {!error && (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Mã WO</th>
+                  <th>Biển số</th>
+                  <th>Khách hàng</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày nhận</th>
+                  <th className={styles.right}>Tổng tiền</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {workOrders.length === 0 && <p className={styles.empty}>Không có work order nào khớp bộ lọc.</p>}
+              </thead>
+              <tbody>
+                {workOrders.map((wo) => (
+                  <tr key={wo.id}>
+                    <td className={styles.mono}>
+                      <Link href={workOrderHref(wo)}>{wo.code}</Link>
+                    </td>
+                    <td className={styles.mono}>{wo.licensePlate}</td>
+                    <td>{wo.customerName}</td>
+                    <td><StatusBadge status={wo.status} onSteel /></td>
+                    <td className={styles.mono}>{new Date(wo.receivedDate).toLocaleDateString("vi-VN")}</td>
+                    <td className={`${styles.mono} ${styles.right}`}>{formatCurrency(wo.totalAmount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {!error && !loading && workOrders.length === 0 && <p className={styles.empty}>Không có work order nào khớp bộ lọc.</p>}
         </>
       )}
 

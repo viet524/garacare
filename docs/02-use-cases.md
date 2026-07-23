@@ -21,6 +21,11 @@
 | UC-13 | Nhắc nhở & gắn cờ gọi điện khi báo giá quá hạn | System + Staff |
 | UC-14 | Thanh toán online qua cổng thanh toán (webhook) | Customer, Payment Gateway |
 | UC-15 | Xử lý khách trễ hẹn (gọi điện, dời lịch, NoShow) | System + Staff |
+| UC-16 | Auto-assign Technician + Bay khi tiếp nhận | System |
+| UC-17 | Reassign Technician giữa chừng & chia hoa hồng | Staff, Admin, System |
+| UC-18 | Phát sinh & duyệt ChangeRequest trong lúc sửa | Technician, Staff, Admin |
+
+> UC-16/17/18 là các use case mới bổ sung theo bản tổng hợp luồng chính v5 (`luong-chinh-tong-hop-v5.md`) — không có trong SRS v3 gốc.
 
 ---
 
@@ -32,27 +37,38 @@
 1. Staff tra cứu khách theo số điện thoại; chưa có thì tạo mới.
 2. Staff chọn/thêm xe gắn với khách hàng.
 3. Staff nhập mô tả sự cố ban đầu do khách khai báo.
-4. Hệ thống tạo WorkOrder mới, trạng thái mặc định **Received**.
+4. Staff chụp ảnh hiện trạng xe (**bắt buộc**).
+5. Hệ thống tạo WorkOrder mới, trạng thái mặc định **Received**.
+6. Hệ thống chạy **UC-16 (Auto-assign Technician + Bay)** ngay lập tức, không cần Staff kích hoạt riêng.
 
-**Ngoại lệ**: Nếu biển số xe đã có work order đang mở (chưa Delivered/Cancelled) → cảnh báo trước khi cho tạo mới.
+**Ngoại lệ**:
+- Nếu biển số xe đã có work order đang mở (chưa Delivered/Cancelled) → cảnh báo trước khi cho tạo mới.
+- Auto-assign không tìm được Technician/Bay khả dụng → WorkOrder vẫn ở **Received**, vào hàng chờ chung, xem UC-16.
 
-**Kết quả**: WorkOrder ở Received, sẵn sàng cho Technician chẩn đoán.
+**Kết quả**: WorkOrder ở Received, đã (hoặc đang chờ) được gán Technician + Bay cho bước chẩn đoán.
 
 ---
 
 ## UC-03. Chẩn đoán & lập báo giá
 
-**Điều kiện tiên quyết**: WorkOrder đang **Received**.
+**Điều kiện tiên quyết**: WorkOrder đang **Received**, đã được auto-assign Technician (UC-16).
 
 **Luồng chính**:
-1. Technician kiểm tra xe, ghi chú nguyên nhân → chuyển **Diagnosing**.
-2. Staff thêm hạng mục báo giá: loại (Phụ tùng/Công), mô tả, số lượng, đơn giá.
-3. Hệ thống tự tính tổng tiền từ các hạng mục.
-4. Staff gửi báo giá → chuyển **QuotePending**. Đồng thời sinh `ApprovalToken` (xem `01-business-spec.md` mục 7).
+1. Technician được gán bấm **Accept** → chuyển **Diagnosing**, Technician chuyển trạng thái nội bộ `DIAGNOSING`.
+2. Technician chọn hạng mục nghi cần sửa từ ServiceCatalog, quét mã phụ tùng, chụp ảnh/video minh chứng, ghi chú (gõ tay/voice-to-text).
+3. Technician nhập `estimatedLaborHours` (chỉ thời gian thao tác kỹ thuật thuần, không phải ngày giao xe) và ký xác nhận điện tử → hệ thống tạo `DiagnosisRecord` **bất biến** (immutable, có timestamp + technicianId) → WorkOrder chuyển **DiagnosisConfirmed**.
+4. Hệ thống kiểm tra `estimatedLaborHours`:
+   - `≤ 2 giờ` → **Fast-lane**, vào hàng chờ chung, xử lý ngay khi có Technician + Bay phù hợp trống.
+   - `> 2 giờ` → **Heavy Repair**, tự tách khỏi khung giờ đặt lịch ban đầu, đẩy vào **Repair Queue** riêng.
+5. Hệ thống tự sinh `Quote` từ `DiagnosisRecord` (đơn giá lấy từ ServiceCatalog, Staff **không** tự nhập/sửa số liệu) và tự tính `systemSuggestedDate` (công thức ở `01-business-spec.md` mục 12).
+6. Staff xem `systemSuggestedDate`, xác nhận hoặc **tăng thêm buffer** (không được giảm xuống dưới mức đề xuất) → gửi báo giá → chuyển **QuotePending**. Đồng thời sinh `ApprovalToken` (xem `01-business-spec.md` mục 7).
+7. Technician chuyển sang `WAITING_ON_CUSTOMER` — được nhận Diagnosing xe khác trong lúc chờ, chưa nhận `InRepair` mới.
 
-**Ngoại lệ**: Phụ tùng không đủ tồn kho → cảnh báo nhưng **vẫn cho phép** báo giá (đặt hàng sau).
+**Ngoại lệ**:
+- Phụ tùng không đủ tồn kho → cảnh báo nhưng **vẫn cho phép** báo giá (đặt hàng sau); `partsWaitTime` được cộng vào `systemSuggestedDate`.
+- Staff nhập `finalEstimatedDate` nhỏ hơn `systemSuggestedDate` → **400 Bad Request**, không cho gửi báo giá.
 
-**Kết quả**: Khách nhận báo giá, xem được chi tiết từng hạng mục qua API.
+**Kết quả**: Khách nhận báo giá kèm `finalEstimatedDate`, xem được chi tiết từng hạng mục qua API.
 
 ---
 
@@ -82,13 +98,73 @@
 **Điều kiện tiên quyết**: WorkOrder đang **InRepair**.
 
 **Luồng chính**:
-1. Technician sửa theo các hạng mục đã được khách duyệt.
-2. Cần phụ tùng → hệ thống kiểm tra tồn kho, trừ kho khi hạng mục được đánh dấu đã dùng.
-3. Hoàn tất toàn bộ hạng mục → chuyển **Completed**.
+1. Technician chuyển trạng thái nội bộ `IN_REPAIR` (khoá cứng — không nhận Diagnosing/InRepair mới khác) và sửa theo các hạng mục đã được khách duyệt.
+2. Cần phụ tùng → hệ thống kiểm tra tồn kho, xuất phụ tùng qua quét mã → tự tạo `InventoryTransaction`, trừ kho khi hạng mục được đánh dấu đã dùng.
+3. Nếu phát sinh hạng mục/thời gian mới ngoài Quote gốc → xử lý qua **UC-18 (ChangeRequest)**, không tự ý sửa `QuotationItem` đã Approved.
+4. Trễ so với `finalEstimatedDate` → hệ thống tự đánh dấu `IsDelayed=true`, gửi thông báo gia hạn (tái dùng UC-12).
+5. Hoàn tất toàn bộ hạng mục → Technician chụp ảnh sau sửa → chuyển **Completed**, Technician quay về `FREE`, hệ thống tự đẩy task tiếp theo trong queue cá nhân lên (nếu có).
 
-**Ngoại lệ**: Thiếu phụ tùng giữa chừng → chuyển **WaitingParts**; phụ tùng về → chuyển lại **InRepair**.
+**Ngoại lệ**:
+- Thiếu phụ tùng giữa chừng → chuyển **WaitingParts**, Technician chuyển `WAITING_PARTS` (được nhận Diagnosing xe khác trong lúc chờ hàng); hàng về → tự chuyển lại **InRepair**, Technician quay lại `IN_REPAIR`.
+- Technician nghỉ đột xuất giữa chừng → xử lý qua **UC-17 (Reassign Technician)**.
 
 **Kết quả**: WorkOrder ở **Completed**, sẵn sàng cho thanh toán.
+
+---
+
+## UC-16. Auto-assign Technician + Bay khi tiếp nhận
+
+**Điều kiện tiên quyết**: WorkOrder vừa được tạo, đang **Received**.
+
+**Luồng chính**:
+1. Hệ thống lọc danh sách Technician ứng viên: ưu tiên `FREE` → ít việc nhất → đúng chuyên môn (nếu có phân loại kỹ năng). Technician đang `IN_REPAIR` bị loại hoàn toàn (khoá cứng), kể cả để chen `Diagnosing`.
+2. Song song, hệ thống lọc Bay đúng `type` theo `requiredBayType` của hạng mục dự kiến, đang `FREE`.
+3. Hệ thống gán **đồng thời** 1 Technician ứng viên hợp lệ VÀ 1 Bay phù hợp đang trống — không gán tách rời.
+4. WorkOrder giữ **Received**, Technician nhận việc vào queue cá nhân, chờ Accept (tiếp UC-03).
+
+**Ngoại lệ**:
+- Dịch vụ VIP có `requestedTechnicianId` (`isMasterTechRequired = true`) nhưng người đó đang bận → gán tạm Technician khác trong Pool, gửi thông báo cho khách/Staff.
+- Technician rảnh nhưng không có Bay phù hợp → WorkOrder vào hàng chờ Bay (không gán Technician đứng chờ); `bayWaitTime` tính từ thời điểm Bay phù hợp gần nhất dự kiến trống.
+- Không còn Technician khả dụng (kể cả để chen `Diagnosing`) → đẩy WorkOrder vào hàng chờ chung, gửi alert cho Staff (danh sách "Cần xử lý").
+
+**Kết quả**: WorkOrder có Technician + Bay được gán (hoặc nằm trong hàng chờ có lý do rõ ràng cho Staff xử lý).
+
+---
+
+## UC-17. Reassign Technician giữa chừng & chia hoa hồng
+
+**Điều kiện tiên quyết**: WorkOrder đang có Technician phụ trách (`Diagnosing`/`InRepair`/`WaitingParts`), Technician đó cần được thay (nghỉ đột xuất, hết ca...).
+
+**Luồng chính**:
+1. Staff/Admin (hoặc alert hệ thống) phát hiện Technician cần thay → mở màn hình reassign, hệ thống gợi ý Technician rảnh trong Pool.
+2. Hệ thống kiểm tra trạng thái Technician cũ để quyết định luồng duyệt (xem bảng guard ở `01-business-spec.md` mục 13):
+   - `WAITING_PARTS` → cho phép auto-reassign ngay cho Technician rảnh, không cần duyệt tay.
+   - `IN_REPAIR` → bắt buộc Staff/Admin duyệt tay, nhập ghi chú/ảnh hiện trạng bàn giao.
+3. Hệ thống đóng dòng `WorkOrderAssignment` của Technician cũ (`endedAt`, `laborHoursLogged`), tạo dòng mới cho Technician mới (`role: HANDOFF`, `handoffReason`).
+4. Staff/Admin xác nhận `commissionSplitPercent` cho từng dòng `WorkOrderAssignment` (hệ thống gợi ý theo tỷ lệ `laborHoursLogged`) — `approvedBy` ghi lại người duyệt.
+
+**Ngoại lệ**:
+- WorkOrder đã **Completed** → không cho reassign (chặn cứng, tránh gian lận số liệu lương).
+- Tổng `commissionSplitPercent` chưa = 100% → chặn chuyển WorkOrder sang **Delivered** (UC-06).
+
+**Kết quả**: `WorkOrderAssignment` phản ánh đúng ai làm phần nào, làm cơ sở chia hoa hồng công bằng; mọi thay đổi % ghi vào `AuditLog`.
+
+---
+
+## UC-18. Phát sinh & duyệt ChangeRequest trong lúc sửa
+
+**Điều kiện tiên quyết**: WorkOrder đang **InRepair**, phát sinh hạng mục/thời gian ngoài Quote gốc.
+
+**Luồng chính**:
+1. Technician tạo `ChangeRequest` (`status = Draft`), ghi `costDeltaPercent`, `costDeltaAbsolute`, `timeDeltaHours` so với Quote/`finalEstimatedDate` hiện tại.
+2. Technician ký xác nhận → `ChangeRequest.status = PendingTechnicianConfirm → Confirmed` (bước ký là bắt buộc, không phân biệt có vượt ngưỡng hay không).
+3. Hệ thống kiểm tra ngưỡng: `costDeltaPercent ≤ 10–15%` **VÀ** `costDeltaAbsolute ≤ 1.000.000đ` **VÀ** `timeDeltaHours ≤ 4 giờ`:
+   - Thoả cả 3 → **auto-approve**, merge thẳng vào Quote, thông báo khách, Staff có thể tự gọi điện xin lỗi khách.
+   - Vượt bất kỳ điều kiện nào → gửi alert cho **Admin** duyệt trước khi merge vào Quote và thông báo khách.
+
+**Ngoại lệ**: Admin từ chối `ChangeRequest` → `status = Rejected`, không merge vào Quote, Technician được thông báo để điều chỉnh phương án sửa.
+
+**Kết quả**: Quote/`finalEstimatedDate` được cập nhật đúng theo `ChangeRequest` đã duyệt, có audit trail đầy đủ.
 
 ---
 
@@ -132,10 +208,11 @@
 **Điều kiện tiên quyết**: Khách đã đăng nhập Customer portal.
 
 **Luồng chính**:
-1. Khách chọn xe (hoặc nhập mới), chọn ngày + khung giờ.
-2. Hệ thống kiểm tra số lượng lịch hẹn đã đặt trong khung giờ đó (giới hạn theo năng lực gara).
-3. Tạo Appointment trạng thái **Booked**, áp `DiscountPercent` ưu đãi đặt trước.
-4. Gửi thông báo xác nhận (in-app + email).
+1. Khách chọn xe (hoặc nhập mới), chọn loại lịch — `StandardService` (dịch vụ có định mức sẵn trong ServiceCatalog) hoặc `GeneralDiagnosis` (báo lỗi chung, chưa rõ nguyên nhân) — rồi chọn ngày + khung giờ.
+2. Hệ thống kiểm tra số lượng lịch hẹn đã đặt trong khung giờ đó (giới hạn theo năng lực gara). `StandardService` block đúng khung giờ theo định mức; `GeneralDiagnosis` chỉ block ~30 phút để tiếp nhận + khám sơ bộ, không cam kết giờ sửa xong.
+3. Mặc định **không cho chọn đích danh Technician**; chỉ hiện tuỳ chọn này nếu dịch vụ được đánh dấu `isMasterTechRequired = true` (VIP/thợ chuyên biệt).
+4. Tạo Appointment trạng thái **Booked**, áp `DiscountPercent` ưu đãi đặt trước.
+5. Gửi thông báo xác nhận (in-app + email).
 
 **Ngoại lệ**: Khung giờ đầy → báo lỗi, gợi ý khung giờ gần nhất còn trống.
 

@@ -34,14 +34,25 @@ public class ExceptionHandlingMiddleware
                 _ => HttpStatusCode.InternalServerError
             };
 
+            // Exception nghiệp vụ (400/401/403/404) đã có message soạn sẵn an toàn để hiện cho
+            // người dùng (xem các lớp trong GaraCare.Application.Exceptions). Exception KHÔNG rõ
+            // nguồn gốc (500) thì ex.Message có thể lộ chi tiết nội bộ (câu SQL, đường dẫn file,
+            // tên bảng...) — không được trả nguyên văn ra ngoài, chỉ log server-side rồi trả về
+            // một câu chung chung.
+            string clientMessage;
             if (statusCode == HttpStatusCode.InternalServerError)
             {
                 _logger.LogError(ex, "Unhandled exception");
+                clientMessage = "Đã có lỗi xảy ra ở hệ thống, vui lòng thử lại sau.";
+            }
+            else
+            {
+                clientMessage = ex.Message;
             }
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)statusCode;
-            await context.Response.WriteAsync(JsonSerializer.Serialize(new { message = ex.Message }));
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new { message = clientMessage }));
         }
     }
 }

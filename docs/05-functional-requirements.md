@@ -22,8 +22,9 @@
 ## Tiếp nhận & chẩn đoán
 | Mã | Chức năng | Ưu tiên |
 | --- | --- | --- |
-| FR-08 | Tạo work order (tiếp nhận xe), mặc định Received | Must |
-| FR-09 | Ghi nhận chẩn đoán, chuyển Diagnosing | Must |
+| FR-08 | Tạo work order (tiếp nhận xe), mặc định Received; chụp ảnh hiện trạng bắt buộc | Must |
+| FR-09 | Technician accept việc auto-assign, chuyển Diagnosing | Must |
+| FR-09b | Technician ký xác nhận chẩn đoán + nhập `estimatedLaborHours`, tạo `DiagnosisRecord` bất biến, chuyển DiagnosisConfirmed | Must |
 
 ## Báo giá & phê duyệt
 | Mã | Chức năng | Ưu tiên |
@@ -60,10 +61,39 @@
 | Mã | Chức năng | Ưu tiên |
 | --- | --- | --- |
 | FR-23 | Đặt lịch trước, áp ưu đãi giảm giá | Must |
+| FR-23b | Chọn `ServiceType` (StandardService/GeneralDiagnosis) khi đặt lịch, block khung giờ tương ứng | Must |
+| FR-23c | Ẩn tuỳ chọn chọn đích danh Technician, trừ khi `ServiceCatalogItem.IsMasterTechRequired=true` | Must |
 | FR-24 | Staff check-in appointment thành work order | Must |
 | FR-25 | Khách huỷ lịch hẹn trước giờ hẹn | Should |
 | FR-26 | Staff đánh dấu NoShow | Should |
 | FR-26b | Khách trễ hẹn: tự đánh dấu IsLate, Staff gọi xử lý (UC-15) | Should |
+
+## Auto-assign Technician & Bay (v5)
+| Mã | Chức năng | Ưu tiên |
+| --- | --- | --- |
+| FR-33 | Auto-assign Technician + Bay tự động khi WorkOrder vào Received (UC-16), không cần người duyệt | Must |
+| FR-34 | Tách WorkOrder vào Repair Queue riêng khi `estimatedLaborHours > 2 giờ` (Heavy Repair) | Must |
+| FR-35 | Tự tính `SystemSuggestedDate` theo công thức đã chốt (labor + queue + parts + bay + QC/wash buffer + service buffer) | Must |
+
+## Reassign Technician & chia hoa hồng (v5)
+| Mã | Chức năng | Ưu tiên |
+| --- | --- | --- |
+| FR-36 | Reassign Technician giữa chừng, ghi vết qua `WorkOrderAssignment` (UC-17) | Must |
+| FR-37 | Bắt buộc Staff/Admin duyệt tay khi reassign lúc Technician đang `IN_REPAIR`; auto-reassign khi `WAITING_PARTS` | Must |
+| FR-38 | Chia hoa hồng theo `CommissionSplitPercent`, chặn chuyển **Delivered** nếu tổng ≠ 100% | Must |
+
+## ChangeRequest theo ngưỡng rủi ro (v5)
+| Mã | Chức năng | Ưu tiên |
+| --- | --- | --- |
+| FR-39 | Technician tạo & ký xác nhận `ChangeRequest` khi phát sinh hạng mục/thời gian ngoài Quote (UC-18) | Must |
+| FR-40 | Auto-approve `ChangeRequest` khi trong ngưỡng (≤10–15% VÀ ≤1.000.000đ VÀ ≤4 giờ) | Must |
+| FR-41 | Gửi alert cho Admin duyệt `ChangeRequest` khi vượt bất kỳ ngưỡng nào | Must |
+
+## Vận hành theo ngoại lệ (Exception-based, v5)
+| Mã | Chức năng | Ưu tiên |
+| --- | --- | --- |
+| FR-42 | Danh sách "Cần xử lý" cho Staff/Admin (WO trễ hạn, ChangeRequest chờ duyệt, cần reassign, WaitingParts quá lâu) | Must |
+| FR-43 | Queue cá nhân cho Technician, sắp theo priority | Should |
 
 ## Thông báo & theo dõi tiến trình (Customer portal)
 | Mã | Chức năng | Ưu tiên |

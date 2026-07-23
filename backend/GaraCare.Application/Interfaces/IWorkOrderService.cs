@@ -19,4 +19,7 @@ public interface IWorkOrderService
     Task<WorkOrderResponse> ResendQuoteAsync(int workOrderId, int actorUserId, CancellationToken cancellationToken = default);
 
     Task<WorkOrderDetailResponse> GetByIdAsync(int workOrderId, CancellationToken cancellationToken = default);
+
+    // Danh sách cho Staff/Technician/Admin — sắp theo ReceivedDate giảm dần (mới nhất trước).
+    Task<IReadOnlyList<WorkOrderListItemResponse>> GetListAsync(CancellationToken cancellationToken = default);
 }

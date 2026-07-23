@@ -9,16 +9,22 @@ Quy tắc nền tảng: **mọi chuyển trạng thái đi qua endpoint hành đ
 | Booked → CheckedIn | Staff | `POST /appointments/{id}/check-in` |
 | Booked → Cancelled | Customer hoặc Staff | `POST /appointments/{id}/cancel` |
 | Booked → NoShow | Staff | `POST /appointments/{id}/mark-no-show` |
-| Received → Diagnosing | Technician | `POST /workorders/{id}/start-diagnosis` |
-| Diagnosing → QuotePending | Staff | `POST /workorders/{id}/send-quote` |
+| Received → Diagnosing | Technician (accept việc auto-assign) | `POST /workorders/{id}/start-diagnosis` |
+| Diagnosing → DiagnosisConfirmed | Technician (ký + nhập `estimatedLaborHours`) | `POST /workorders/{id}/confirm-diagnosis` |
+| DiagnosisConfirmed → QuotePending | Staff (xác nhận/tăng buffer, gửi báo giá) | `POST /workorders/{id}/send-quote` |
 | QuotePending → InRepair | Customer | `POST /workorders/{id}/approve-quote` |
 | QuotePending → Cancelled | Customer | `POST /workorders/{id}/reject-quote` |
 | InRepair → WaitingParts | Technician | `POST /workorders/{id}/mark-waiting-parts` |
 | WaitingParts → InRepair | Technician | `POST /workorders/{id}/resume-repair` |
 | InRepair → Completed | Technician | `POST /workorders/{id}/mark-completed` |
-| Completed → Delivered (tiền mặt) | Staff | `POST /workorders/{id}/record-cash-payment` |
+| Completed → Delivered (tiền mặt) | Staff | `POST /workorders/{id}/record-cash-payment` (guard: tổng `CommissionSplitPercent` của `WorkOrderAssignment` = 100%) |
 | Completed → Delivered (online) | Hệ thống (webhook) | `POST /payments/webhook` |
 | — nhắc/gắn cờ gọi điện | Hệ thống (job nền) | Không có endpoint — chạy nền định kỳ |
+| — auto-assign Technician + Bay | Hệ thống (ngay sau khi tạo WorkOrder) | Không có endpoint riêng — chạy như side effect của `POST /workorders` (walk-in) hoặc `POST /appointments/{id}/check-in` |
+| Reassign Technician giữa chừng | Staff/Admin (duyệt tay nếu `IN_REPAIR`) hoặc hệ thống (auto nếu `WAITING_PARTS`) | `POST /workorders/{id}/reassign-technician` |
+| ChangeRequest: Draft → Confirmed | Technician (ký xác nhận) | `POST /workorders/{id}/change-requests/{changeRequestId}/confirm` |
+| ChangeRequest: Confirmed → merge vào Quote (trong ngưỡng) | Hệ thống (auto-approve) | Không có endpoint riêng — side effect của bước `confirm` ở trên khi trong ngưỡng |
+| ChangeRequest vượt ngưỡng: chờ duyệt → merge/Rejected | Admin | `POST /workorders/{id}/change-requests/{changeRequestId}/approve` , `POST /workorders/{id}/change-requests/{changeRequestId}/reject` |
 
 `{id}` = id nội bộ. Với `approve-quote`/`reject-quote` khi khách vào qua magic link (không đăng nhập), cần biến thể xác thực bằng token thay vì JWT — ví dụ `POST /workorders/quotes/{token}/approve` và `POST /workorders/quotes/{token}/reject` (đặt tên chính xác nên thống nhất với team trước khi code, đây chỉ là gợi ý theo đúng tinh thần "một hành động = một endpoint").
 
@@ -53,7 +59,11 @@ Service Layer thực hiện đúng thứ tự sau (một hàm dùng chung, khôn
 - `GET /workorders/{id}/invoice` — content negotiation JSON/XML qua `Accept` header (FR-18).
 - `GET /odata/WorkOrders` — hỗ trợ `$filter`, `$orderby`, `$top`, `$skip` (FR-20). Nếu OData khó cấu hình trong giai đoạn đầu, phương án dự phòng là query string filter thường (`?status=&from=&to=`) — chỉ dùng khi được yêu cầu chuyển hướng.
 - Báo cáo doanh thu (Admin only, FR-21).
-- `GET` trang tiến trình sửa xe cho Customer (UC-11) — trả kèm `EstimatedCompletionDate` + danh sách Notification liên quan.
+- `GET` trang tiến trình sửa xe cho Customer (UC-11) — trả kèm `FinalEstimatedDate` + danh sách Notification liên quan.
+- CRUD `ServiceCatalogItem` (Admin) — nguồn đơn giá/`RequiredBayType`/`IsMasterTechRequired` dùng khi đặt lịch và tự sinh Quote.
+- CRUD `Bay` (Admin) — quản lý danh sách khoang/cầu nâng và trạng thái `FREE/OCCUPIED/MAINTENANCE`.
+- `GET /workorders/needs-attention` (hoặc tương đương) — danh sách "Cần xử lý" cho Staff/Admin: WO trễ hạn, ChangeRequest chờ duyệt, Technician báo nghỉ cần reassign, WaitingParts quá lâu, không còn Technician khả dụng (`01-business-spec.md` mục 15). Tên route cụ thể do team quyết định theo convention.
+- `GET /technicians/{id}/queue` (hoặc tương đương) — queue cá nhân của Technician, sắp theo priority.
 
 ## Response convention
 

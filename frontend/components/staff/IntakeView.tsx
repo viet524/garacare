@@ -41,6 +41,8 @@ interface IntakeViewProps {
   hasOpenWorkOrderWarning: boolean;
   submit: (e: React.FormEvent) => void;
   submitted: boolean;
+  createdWorkOrderId: number | null;
+  goToDiagnosis: () => void;
 }
 
 export function IntakeView({
@@ -80,13 +82,20 @@ export function IntakeView({
   hasOpenWorkOrderWarning,
   submit,
   submitted,
+  createdWorkOrderId,
+  goToDiagnosis,
 }: IntakeViewProps) {
   if (submitted) {
     return (
       <div>
         <h1 className={styles.title}>Tiếp nhận xe</h1>
         <div className={styles.card}>
-          <div className={styles.success}>Đã tạo Work Order mới ở trạng thái "Đã tiếp nhận". Chuyển Kỹ thuật viên bắt đầu chẩn đoán khi sẵn sàng.</div>
+          <div className={styles.success}>
+            Đã tạo Work Order #{createdWorkOrderId} ở trạng thái &quot;Đã tiếp nhận&quot;. Chuyển Kỹ thuật viên bắt đầu chẩn đoán khi sẵn sàng.
+          </div>
+          <Button type="button" fullWidth onClick={goToDiagnosis} style={{ marginTop: 12 }}>
+            Đi tới chẩn đoán / báo giá
+          </Button>
         </div>
       </div>
     );
@@ -99,11 +108,17 @@ export function IntakeView({
         <div>
           <div className={styles.stepLabel}>Bước 1 · Tra cứu khách hàng</div>
           <div className={styles.searchRow} style={{ marginTop: 8 }}>
-            <input className={styles.input} placeholder="Số điện thoại" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Button type="button" variant="secondary" onSteel onClick={searchByPhone} disabled={loading || !phone.trim()}>
+            <input
+              className={`${styles.input} ${fieldErrors.phone ? styles.inputError : ""}`}
+              placeholder="Số điện thoại"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <Button type="button" variant="secondary" onSteel onClick={searchByPhone} disabled={loading}>
               {loading ? "Đang tìm…" : "Tìm"}
             </Button>
           </div>
+          {fieldErrors.phone && <div className={styles.fieldError} style={{ marginTop: 6 }}>{fieldErrors.phone}</div>}
 
           {/* Chỉ hiện ở đây khi không có popup nào đang mở — popup mở thì lỗi hiện bên trong
               popup đó, vì overlay (z-index cao) phủ kín trang, hiện ở ngoài sẽ bị che mất. */}
@@ -160,8 +175,8 @@ export function IntakeView({
           />
         </div>
 
-        <Button type="submit" fullWidth disabled={!selectedVehicleId || !description}>
-          Tiếp nhận xe
+        <Button type="submit" fullWidth disabled={!selectedVehicleId || !description.trim() || loading}>
+          {loading ? "Đang tạo…" : "Tiếp nhận xe"}
         </Button>
       </form>
 

@@ -452,4 +452,52 @@ public class WorkOrderServiceTests
         Assert.Single(result.QuotationItems);
         Assert.Equal("Công", result.QuotationItems[0].Description);
     }
+
+    [Fact]
+    public async Task GetListAsync_NoWorkOrders_ReturnsEmptyList()
+    {
+        var (service, _, _, _) = CreateService();
+
+        var result = await service.GetListAsync();
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetListAsync_OrdersByReceivedDateDescending()
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        db.WorkOrders.AddRange(
+            new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Delivered, ReceivedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) });
+        await db.SaveChangesAsync();
+
+        var result = await service.GetListAsync();
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), result[0].ReceivedDate);
+        Assert.Equal(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), result[1].ReceivedDate);
+    }
+
+    [Fact]
+    public async Task GetListAsync_IncludesVehicleAndCustomerInfo()
+    {
+        var (service, db, _, _) = CreateService();
+        var (vehicleId, userId, _) = await SeedVehicleAsync(db);
+        var vehicle = await db.Vehicles.FindAsync(vehicleId);
+        vehicle!.Brand = "Honda";
+        vehicle.Model = "Wave";
+        db.WorkOrders.Add(new WorkOrder { VehicleId = vehicleId, CreatedByUserId = userId, Status = WorkOrderStatus.Received, ReceivedDate = DateTime.UtcNow, TotalAmount = 500000 });
+        await db.SaveChangesAsync();
+
+        var result = await service.GetListAsync();
+
+        Assert.Single(result);
+        Assert.Equal("51A-12345", result[0].LicensePlate);
+        Assert.Equal("Honda Wave", result[0].VehicleLabel);
+        Assert.Equal("Khách A", result[0].CustomerName);
+        Assert.Equal("0900000000", result[0].CustomerPhone);
+        Assert.Equal(500000, result[0].TotalAmount);
+    }
 }

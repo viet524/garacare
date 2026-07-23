@@ -58,5 +58,13 @@ public class WorkOrdersController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Staff,Technician,Admin")]
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<WorkOrderListItemResponse>>> GetList(CancellationToken cancellationToken)
+    {
+        var result = await _workOrderService.GetListAsync(cancellationToken);
+        return Ok(result);
+    }
+
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }

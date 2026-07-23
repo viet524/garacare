@@ -21,6 +21,13 @@ Mọi transition WorkOrder/Appointment PHẢI đi qua đúng khuôn mẫu ở `0
 
 Nếu một trong các mục trên bị bỏ qua, coi như task chưa xong — không báo "hoàn thành" khi thiếu.
 
+**Riêng cho các cơ chế mới của v5** (auto-assign, reassign, ChangeRequest) — checklist bổ sung:
+
+- [ ] Auto-assign Technician + Bay: luôn kiểm tra **join cả 2 điều kiện** (Technician rảnh VÀ Bay đúng loại `FREE`), không được gán Technician mà bỏ qua Bay.
+- [ ] Reassign Technician: đúng guard theo `TechnicianStatus` cũ (`IN_REPAIR` → bắt buộc duyệt tay; `WAITING_PARTS` → auto; `Completed` → chặn cứng, xem `01-business-spec.md` mục 13).
+- [ ] Đóng WorkOrder ở **Delivered**: validate tổng `CommissionSplitPercent` của `WorkOrderAssignment` = 100%.
+- [ ] `ChangeRequest`: Technician luôn ký xác nhận trước; kiểm tra đủ cả 3 ngưỡng (`costDeltaPercent`, `costDeltaAbsolute`, `timeDeltaHours`) trước khi quyết định auto-approve hay gửi alert Admin — vượt 1 ngưỡng là đủ để bắt buộc Admin duyệt, không cần vượt cả 3.
+
 ## C. Không tự bịa — danh sách cụ thể những gì KHÔNG được tự thêm
 
 - Entity/field không có trong `03-data-model.md`.
@@ -29,6 +36,7 @@ Nếu một trong các mục trên bị bỏ qua, coi như task chưa xong — k
 - Tích hợp bên thứ ba chưa được yêu cầu (ví dụ tự động tích hợp VNPay thật khi task chỉ nói "làm thanh toán online" — mặc định dùng cổng giả lập nội bộ, xem FR-17b vs FR-17c).
 - Tính năng thuộc mức Could khi task đang ở giai đoạn làm Must/Should, trừ khi được yêu cầu rõ.
 - Đổi tên trạng thái, đổi thứ tự state machine, gộp/tách bước trong luồng WorkOrder — đây là hợp đồng nghiệp vụ, không phải chi tiết implementation.
+- **Ba điểm mở của v5 chưa có số cụ thể — không tự chọn giá trị mặc định**: (1) danh sách `ServiceCatalogItem.RequiredBayType` theo hạng mục, (2) số lượng `Bay` từng loại để seed data, (3) giá trị `qcAndWashBuffer`/`serviceBuffer` trong công thức `SystemSuggestedDate` (xem `01-business-spec.md` mục 12, `03-data-model.md` mục "Điểm mở chưa chốt"). Nếu một task cần các con số này để chạy được, dừng lại và hỏi.
 
 Khi cảm thấy "chắc thêm cái này cho đầy đủ" hoặc "chắc user cũng muốn cái này" — đó chính là tín hiệu để dừng lại và hỏi, không phải để tự tin làm luôn.
 

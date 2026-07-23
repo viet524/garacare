@@ -264,6 +264,44 @@ public class WorkOrderService : IWorkOrderService
         };
     }
 
+    public async Task<IReadOnlyList<WorkOrderListItemResponse>> GetListAsync(CancellationToken cancellationToken = default)
+    {
+        var workOrders = (await _unitOfWork.Repository<WorkOrder>().GetAllAsync(cancellationToken))
+            .OrderByDescending(w => w.ReceivedDate)
+            .ToList();
+
+        var vehicleIds = workOrders.Select(w => w.VehicleId).Distinct().ToList();
+        var vehicles = (await _unitOfWork.Repository<Vehicle>().FindAsync(v => vehicleIds.Contains(v.Id), cancellationToken))
+            .ToDictionary(v => v.Id);
+
+        var customerIds = vehicles.Values.Select(v => v.CustomerId).Distinct().ToList();
+        var customers = (await _unitOfWork.Repository<Customer>().FindAsync(c => customerIds.Contains(c.Id), cancellationToken))
+            .ToDictionary(c => c.Id);
+
+        return workOrders.Select(w =>
+        {
+            vehicles.TryGetValue(w.VehicleId, out var vehicle);
+            Customer? customer = null;
+            if (vehicle is not null)
+            {
+                customers.TryGetValue(vehicle.CustomerId, out customer);
+            }
+
+            return new WorkOrderListItemResponse
+            {
+                Id = w.Id,
+                Status = w.Status.ToString(),
+                ReceivedDate = w.ReceivedDate,
+                TotalAmount = w.TotalAmount,
+                NeedsFollowUpCall = w.NeedsFollowUpCall,
+                LicensePlate = vehicle?.LicensePlate ?? string.Empty,
+                VehicleLabel = vehicle is null ? string.Empty : $"{vehicle.Brand} {vehicle.Model}".Trim(),
+                CustomerName = customer?.FullName ?? string.Empty,
+                CustomerPhone = customer?.Phone,
+            };
+        }).ToList();
+    }
+
     private static QuotationItemResponse ToQuotationItemResponse(QuotationItem item) => new()
     {
         Id = item.Id,

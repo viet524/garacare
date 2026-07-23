@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { createCustomer, findByPhone } from "@/lib/api/customers";
 import { createVehicle, getByCustomer, getWorkOrderHistory } from "@/lib/api/vehicles";
+import { createWalkIn } from "@/lib/api/workorders";
 import { ApiError, getFieldErrors } from "@/lib/api/client";
+import { isValidVietnamesePhone } from "@/lib/validation";
 import type { CustomerResponse } from "@/types/customer";
 import type { VehicleResponse } from "@/types/vehicle";
 
 const OPEN_STATUSES = new Set(["Received", "Diagnosing", "QuotePending", "InRepair", "WaitingParts", "Completed"]);
 
 export function useIntakeViewModel() {
+  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [foundCustomer, setFoundCustomer] = useState<CustomerResponse | null>(null);
   const [vehicles, setVehicles] = useState<VehicleResponse[]>([]);
@@ -39,6 +43,15 @@ export function useIntakeViewModel() {
   }
 
   async function searchByPhone() {
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) {
+      setFieldErrors({ phone: "Vui lòng nhập số điện thoại." });
+      return;
+    }
+    if (!isValidVietnamesePhone(trimmedPhone)) {
+      setFieldErrors({ phone: "Số điện thoại không đúng định dạng Việt Nam (VD: 0912345678)." });
+      return;
+    }
     setLoading(true);
     setError(null);
     setFieldErrors({});
@@ -135,11 +148,32 @@ export function useIntakeViewModel() {
     }
   }
 
-  // TODO: gọi lib/api/workorders.ts (createWalkIn) khi GARA-22/26 (tạo WorkOrder) xong —
-  // hiện epic đó chưa có endpoint nên bước này chỉ dừng ở tạo Customer/Vehicle thật.
-  function submit(e: React.FormEvent) {
+  const [createdWorkOrderId, setCreatedWorkOrderId] = useState<number | null>(null);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    if (!selectedVehicleId || !description.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const workOrder = await createWalkIn(
+        { vehicleId: selectedVehicleId, initialDescription: description.trim() },
+        token(),
+      );
+      setCreatedWorkOrderId(workOrder.id);
+      setHasOpenWorkOrderWarning(workOrder.hasOpenWorkOrderWarning);
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể tạo work order, vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function goToDiagnosis() {
+    if (createdWorkOrderId) {
+      router.push(`/staff/workorders/${createdWorkOrderId}/quote`);
+    }
   }
 
   return {
@@ -179,5 +213,7 @@ export function useIntakeViewModel() {
     hasOpenWorkOrderWarning,
     submit,
     submitted,
+    createdWorkOrderId,
+    goToDiagnosis,
   };
 }

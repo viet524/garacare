@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { MOCK_WORK_ORDERS } from "@/lib/mock/data";
-import type { QuotationItemType, QuotationItemView } from "@/types/domain";
+import { useEffect, useState } from "react";
+import { getSession } from "@/lib/auth/session";
+import { getById, sendQuote as sendQuoteApi, startDiagnosis as startDiagnosisApi } from "@/lib/api/workorders";
+import { addItem as addItemApi, removeItem as removeItemApi } from "@/lib/api/quotationItems";
+import { ApiError } from "@/lib/api/client";
+import type { QuotationItemType } from "@/types/domain";
+import type { WorkOrderDetailResponse } from "@/types/workorder";
 
-// TODO: nối lib/api/workorders.ts (startDiagnosis, sendQuote) + lib/api/quotationItems.ts khi GARA-23/24/25 xong.
 export function useQuoteBuilderViewModel(workOrderId: number) {
-  const base = MOCK_WORK_ORDERS.find((w) => w.id === workOrderId) ?? MOCK_WORK_ORDERS[1];
-  const [items, setItems] = useState<QuotationItemView[]>(base.items);
-  const [diagnosisNote, setDiagnosisNote] = useState(base.diagnosisNote ?? "");
+  const [workOrder, setWorkOrder] = useState<WorkOrderDetailResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [diagnosisNote, setDiagnosisNote] = useState("");
   const [newType, setNewType] = useState<QuotationItemType>("Part");
   const [newDescription, setNewDescription] = useState("");
   const [newQuantity, setNewQuantity] = useState(1);
@@ -16,42 +21,102 @@ export function useQuoteBuilderViewModel(workOrderId: number) {
   const [estimatedDate, setEstimatedDate] = useState("");
   const [sent, setSent] = useState(false);
 
-  const totalAmount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  function token() {
+    return getSession()?.token ?? "";
+  }
 
-  function addItem() {
+  async function reload() {
+    const detail = await getById(workOrderId, token());
+    setWorkOrder(detail);
+    return detail;
+  }
+
+  useEffect(() => {
+    getById(workOrderId, token())
+      .then((detail) => {
+        setWorkOrder(detail);
+        setDiagnosisNote(detail.diagnosisNote ?? "");
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Không thể tải work order."))
+      .finally(() => setLoading(false));
+  }, [workOrderId]);
+
+  // UC-03 bước 1 (docs/02-use-cases.md): Technician ghi chú nguyên nhân thực tế rồi mới chuyển
+  // Received → Diagnosing — bước riêng, Staff/Technician bấm rõ ràng, không còn ngầm chạy khi
+  // thêm hạng mục báo giá như trước (đúng "một hành động = một endpoint", docs/06-workflow-rules.md).
+  async function startDiagnosis() {
+    if (!workOrder || workOrder.status !== "Received" || !diagnosisNote.trim()) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await startDiagnosisApi(workOrderId, { diagnosisNote: diagnosisNote.trim() }, token());
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể chuyển sang chẩn đoán.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addItem() {
     if (!newDescription || newUnitPrice <= 0) return;
-    setItems((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        type: newType,
-        description: newDescription,
-        quantity: newQuantity,
-        unitPrice: newUnitPrice,
-        isApproved: false,
-        isUsed: false,
-        lowStockWarning: newType === "Part" && newDescription.toLowerCase().includes("cảm biến"),
-      },
-    ]);
-    setNewDescription("");
-    setNewQuantity(1);
-    setNewUnitPrice(0);
+    setError(null);
+    try {
+      await addItemApi(
+        {
+          workOrderId,
+          type: newType,
+          description: newDescription,
+          quantity: newQuantity,
+          unitPrice: newUnitPrice,
+        },
+        token(),
+      );
+      await reload();
+      setNewDescription("");
+      setNewQuantity(1);
+      setNewUnitPrice(0);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể thêm hạng mục báo giá.");
+    }
   }
 
-  function removeItem(id: number) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  async function removeItem(id: number) {
+    setError(null);
+    try {
+      await removeItemApi(id, token());
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xoá hạng mục báo giá.");
+    }
   }
 
-  function sendQuote(e: React.FormEvent) {
+  async function sendQuote(e: React.FormEvent) {
     e.preventDefault();
-    setSent(true);
+    if (!estimatedDate) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await sendQuoteApi(workOrderId, { estimatedCompletionDate: estimatedDate }, token());
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể gửi báo giá.");
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const items = workOrder?.quotationItems ?? [];
+  const totalAmount = workOrder?.totalAmount ?? 0;
 
   return {
-    workOrder: base,
+    workOrder,
+    loading,
+    error,
     items,
     diagnosisNote,
     setDiagnosisNote,
+    startDiagnosis,
     newType,
     setNewType,
     newDescription,

@@ -2,15 +2,19 @@ import { Button } from "@/components/shared/Button";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { TicketCard } from "@/components/shared/TicketCard";
 import { formatCurrency } from "@/lib/mock/data";
-import type { QuotationItemType, QuotationItemView, WorkOrderView } from "@/types/domain";
+import type { QuotationItemType } from "@/types/domain";
+import type { QuotationItemResponse, WorkOrderDetailResponse } from "@/types/workorder";
 import { useState } from "react";
 import styles from "./QuoteBuilderView.module.css";
 
 interface QuoteBuilderViewProps {
-  workOrder: WorkOrderView;
-  items: QuotationItemView[];
+  workOrder: WorkOrderDetailResponse | null;
+  loading: boolean;
+  error: string | null;
+  items: QuotationItemResponse[];
   diagnosisNote: string;
   setDiagnosisNote: (v: string) => void;
+  startDiagnosis: () => void;
   newType: QuotationItemType;
   setNewType: (v: QuotationItemType) => void;
   newDescription: string;
@@ -29,25 +33,84 @@ interface QuoteBuilderViewProps {
 }
 
 export function QuoteBuilderView(props: QuoteBuilderViewProps) {
-  const { workOrder, items, diagnosisNote, setDiagnosisNote, newType, setNewType, newDescription, setNewDescription, newQuantity, setNewQuantity, newUnitPrice, setNewUnitPrice, addItem, removeItem, totalAmount, estimatedDate, setEstimatedDate, sendQuote, sent } = props;
+  const {
+    workOrder,
+    loading,
+    error,
+    items,
+    diagnosisNote,
+    setDiagnosisNote,
+    startDiagnosis,
+    newType,
+    setNewType,
+    newDescription,
+    setNewDescription,
+    newQuantity,
+    setNewQuantity,
+    newUnitPrice,
+    setNewUnitPrice,
+    addItem,
+    removeItem,
+    totalAmount,
+    estimatedDate,
+    setEstimatedDate,
+    sendQuote,
+    sent,
+  } = props;
   const [priceInput, setPriceInput] = useState("");
 
   if (sent) {
     return (
       <div className={styles.wrap}>
         <div className={styles.success}>
-          Đã gửi báo giá cho khách qua email + trong app. Work Order chuyển sang trạng thái "Chờ duyệt giá".
+          Đã gửi báo giá cho khách qua email + trong app. Work Order chuyển sang trạng thái &quot;Chờ duyệt giá&quot;.
         </div>
       </div>
     );
   }
 
+  if (loading && !workOrder) {
+    return <div className={styles.wrap}>Đang tải work order…</div>;
+  }
+
+  if (!workOrder) {
+    return <div className={styles.wrap}>{error ?? "Không tìm thấy work order."}</div>;
+  }
+
+  // UC-03 bước 1 (docs/02-use-cases.md): WorkOrder mới tiếp nhận đứng ở Received — Technician
+  // phải ghi chú nguyên nhân thực tế rồi bấm "Bắt đầu chẩn đoán" trước, chưa được thêm hạng mục
+  // báo giá/gửi báo giá (đó là bước sau, khi đã Diagnosing).
+  if (workOrder.status === "Received") {
+    return (
+      <div className={styles.wrap}>
+        {error && <div className={styles.error}>{error}</div>}
+        <TicketCard code={String(workOrder.id)} onSteel headerRight={<StatusBadge status={workOrder.status} onSteel />}>
+          <div className={styles.mono} style={{ color: "#EDEFEE", marginBottom: 12 }}>Xe #{workOrder.vehicleId}</div>
+          <div className={styles.sectionLabel}>Ghi chú chẩn đoán</div>
+          <textarea
+            className={styles.textarea}
+            value={diagnosisNote}
+            onChange={(e) => setDiagnosisNote(e.target.value)}
+            placeholder="Nguyên nhân thực tế sau khi kiểm tra xe…"
+          />
+        </TicketCard>
+        <Button onClick={startDiagnosis} disabled={!diagnosisNote.trim() || loading}>
+          {loading ? "Đang chuyển…" : "Bắt đầu chẩn đoán"}
+        </Button>
+      </div>
+    );
+  }
+
+  // Đã bắt đầu chẩn đoán (hoặc đã gửi báo giá trước đó) — ghi chú chẩn đoán chỉ sửa được lúc
+  // còn ở Received; dùng resend-quote ở trang chi tiết work order để gửi lại báo giá.
   return (
     <form className={styles.wrap} onSubmit={sendQuote}>
-      <TicketCard code={workOrder.code} onSteel headerRight={<StatusBadge status="Diagnosing" onSteel />}>
-        <div className={styles.mono} style={{ color: "#EDEFEE", marginBottom: 12 }}>{workOrder.vehicleLabel} · {workOrder.licensePlate}</div>
+      {error && <div className={styles.error}>{error}</div>}
+
+      <TicketCard code={String(workOrder.id)} onSteel headerRight={<StatusBadge status={workOrder.status} onSteel />}>
+        <div className={styles.mono} style={{ color: "#EDEFEE", marginBottom: 12 }}>Xe #{workOrder.vehicleId}</div>
         <div className={styles.sectionLabel}>Ghi chú chẩn đoán</div>
-        <textarea className={styles.textarea} value={diagnosisNote} onChange={(e) => setDiagnosisNote(e.target.value)} />
+        <textarea className={styles.textarea} value={diagnosisNote} readOnly />
       </TicketCard>
 
       <div>
@@ -73,8 +136,12 @@ export function QuoteBuilderView(props: QuoteBuilderViewProps) {
                 </td>
                 <td className={`${styles.mono} ${styles.right}`}>{item.quantity}</td>
                 <td className={`${styles.mono} ${styles.right}`}>{formatCurrency(item.unitPrice)}</td>
-                <td className={`${styles.mono} ${styles.right}`}>{formatCurrency(item.quantity * item.unitPrice)}</td>
-                <td><button type="button" className={styles.removeBtn} onClick={() => removeItem(item.id)}>Xoá</button></td>
+                <td className={`${styles.mono} ${styles.right}`}>{formatCurrency(item.lineTotal)}</td>
+                <td>
+                  <button type="button" className={styles.removeBtn} onClick={() => removeItem(item.id)} disabled={item.isApproved}>
+                    Xoá
+                  </button>
+                </td>
               </tr>
             ))}
             <tr className={styles.newRow}>
@@ -111,7 +178,9 @@ export function QuoteBuilderView(props: QuoteBuilderViewProps) {
 
       <div className={styles.footer}>
         <input type="date" className={styles.dateInput} value={estimatedDate} onChange={(e) => setEstimatedDate(e.target.value)} />
-        <Button type="submit" disabled={items.length === 0 || !estimatedDate}>Gửi báo giá</Button>
+        <Button type="submit" disabled={items.length === 0 || !estimatedDate || loading}>
+          {loading ? "Đang gửi…" : "Gửi báo giá"}
+        </Button>
       </div>
     </form>
   );
