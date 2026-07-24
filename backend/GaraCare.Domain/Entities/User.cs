@@ -12,6 +12,9 @@ public class User
     public string? Email { get; set; }
     public UserRole Role { get; set; }
 
+    // Chỉ có giá trị khi Role == Technician — điều khiển auto-assign (docs/01-business-spec.md §11).
+    public TechnicianStatus? TechnicianStatus { get; set; }
+
     // Đăng nhập bằng Email — tài khoản chỉ dùng được sau khi xác minh (trừ tài khoản
     // nội bộ do Admin tạo, tự động IsEmailVerified=true vì không tự đăng ký).
     public bool IsEmailVerified { get; set; }

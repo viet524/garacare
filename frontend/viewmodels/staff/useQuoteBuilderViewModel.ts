@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { getSession } from "@/lib/auth/session";
-import { getById, sendQuote as sendQuoteApi, startDiagnosis as startDiagnosisApi } from "@/lib/api/workorders";
+import {
+  confirmDiagnosis as confirmDiagnosisApi,
+  getById,
+  sendQuote as sendQuoteApi,
+  startDiagnosis as startDiagnosisApi,
+} from "@/lib/api/workorders";
 import { addItem as addItemApi, removeItem as removeItemApi } from "@/lib/api/quotationItems";
 import { ApiError } from "@/lib/api/client";
 import type { QuotationItemType } from "@/types/domain";
@@ -14,6 +19,7 @@ export function useQuoteBuilderViewModel(workOrderId: number) {
   const [error, setError] = useState<string | null>(null);
 
   const [diagnosisNote, setDiagnosisNote] = useState("");
+  const [estimatedLaborHours, setEstimatedLaborHours] = useState("");
   const [newType, setNewType] = useState<QuotationItemType>("Part");
   const [newDescription, setNewDescription] = useState("");
   const [newQuantity, setNewQuantity] = useState(1);
@@ -58,6 +64,23 @@ export function useQuoteBuilderViewModel(workOrderId: number) {
     }
   }
 
+  // UC-03 bước 3: Technician ký xác nhận + nhập estimatedLaborHours, tạo DiagnosisRecord bất
+  // biến, chuyển Diagnosing → DiagnosisConfirmed.
+  async function confirmDiagnosis() {
+    const hours = Number(estimatedLaborHours);
+    if (!workOrder || workOrder.status !== "Diagnosing" || !diagnosisNote.trim() || !(hours > 0)) return;
+    setError(null);
+    setLoading(true);
+    try {
+      await confirmDiagnosisApi(workOrderId, { notes: diagnosisNote.trim(), estimatedLaborHours: hours }, token());
+      await reload();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Không thể xác nhận chẩn đoán.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function addItem() {
     if (!newDescription || newUnitPrice <= 0) return;
     setError(null);
@@ -97,7 +120,7 @@ export function useQuoteBuilderViewModel(workOrderId: number) {
     setError(null);
     setLoading(true);
     try {
-      await sendQuoteApi(workOrderId, { estimatedCompletionDate: estimatedDate }, token());
+      await sendQuoteApi(workOrderId, { finalEstimatedDate: estimatedDate }, token());
       setSent(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Không thể gửi báo giá.");
@@ -117,6 +140,9 @@ export function useQuoteBuilderViewModel(workOrderId: number) {
     diagnosisNote,
     setDiagnosisNote,
     startDiagnosis,
+    estimatedLaborHours,
+    setEstimatedLaborHours,
+    confirmDiagnosis,
     newType,
     setNewType,
     newDescription,

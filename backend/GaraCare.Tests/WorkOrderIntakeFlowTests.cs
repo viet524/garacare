@@ -42,6 +42,9 @@ public class WorkOrderIntakeFlowTests
         await workOrderService.StartDiagnosisAsync(
             created.Id, new StartDiagnosisRequest { DiagnosisNote = "Mòn má phanh" }, actorUserId: technician.Id);
 
+        await workOrderService.ConfirmDiagnosisAsync(
+            created.Id, new ConfirmDiagnosisRequest { Notes = "Mòn má phanh, cần thay", EstimatedLaborHours = 1.5m }, actorTechnicianId: technician.Id);
+
         await quotationItemService.AddAsync(new AddQuotationItemRequest
         {
             WorkOrderId = created.Id,
@@ -60,7 +63,7 @@ public class WorkOrderIntakeFlowTests
         });
 
         var sent = await workOrderService.SendQuoteAsync(
-            created.Id, new SendQuoteRequest { EstimatedCompletionDate = clock.UtcNow.AddDays(1) }, actorUserId: staff.Id);
+            created.Id, new SendQuoteRequest { FinalEstimatedDate = clock.UtcNow.AddDays(1) }, actorUserId: staff.Id);
         Assert.Equal("QuotePending", sent.Status);
         Assert.Equal(450000, sent.TotalAmount);
         var tokenAfterSend = (await db.WorkOrders.FindAsync(created.Id))!.ApprovalToken;
@@ -71,10 +74,11 @@ public class WorkOrderIntakeFlowTests
         Assert.NotEqual(tokenAfterSend, tokenAfterResend);
 
         var history = db.WorkOrderStatusHistories.Where(h => h.WorkOrderId == created.Id).OrderBy(h => h.ChangedAt).ToList();
-        Assert.Equal(3, history.Count);
+        Assert.Equal(4, history.Count);
         Assert.Equal((WorkOrderStatus.Received, WorkOrderStatus.Received), (history[0].FromStatus, history[0].ToStatus));
         Assert.Equal((WorkOrderStatus.Received, WorkOrderStatus.Diagnosing), (history[1].FromStatus, history[1].ToStatus));
-        Assert.Equal((WorkOrderStatus.Diagnosing, WorkOrderStatus.QuotePending), (history[2].FromStatus, history[2].ToStatus));
+        Assert.Equal((WorkOrderStatus.Diagnosing, WorkOrderStatus.DiagnosisConfirmed), (history[2].FromStatus, history[2].ToStatus));
+        Assert.Equal((WorkOrderStatus.DiagnosisConfirmed, WorkOrderStatus.QuotePending), (history[3].FromStatus, history[3].ToStatus));
 
         var detail = await workOrderService.GetByIdAsync(created.Id);
         Assert.Equal(2, detail.QuotationItems.Count);

@@ -8,7 +8,9 @@ namespace GaraCare.Application.Services;
 
 public class QuotationItemService : IQuotationItemService
 {
-    private static readonly WorkOrderStatus[] EditableStatuses = { WorkOrderStatus.Diagnosing, WorkOrderStatus.QuotePending };
+    // DiagnosisConfirmed: Staff lập hạng mục báo giá sau khi Technician đã ký xác nhận chẩn đoán
+    // (docs/02-use-cases.md UC-03) — Diagnosing tự nó chỉ dành cho Technician ghi chú/chẩn đoán.
+    private static readonly WorkOrderStatus[] EditableStatuses = { WorkOrderStatus.DiagnosisConfirmed, WorkOrderStatus.QuotePending };
 
     private readonly IUnitOfWork _unitOfWork;
 

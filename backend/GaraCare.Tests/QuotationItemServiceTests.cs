@@ -47,6 +47,7 @@ public class QuotationItemServiceTests
 
     [Theory]
     [InlineData(WorkOrderStatus.Received)]
+    [InlineData(WorkOrderStatus.Diagnosing)]
     [InlineData(WorkOrderStatus.InRepair)]
     [InlineData(WorkOrderStatus.Completed)]
     public async Task AddAsync_WorkOrderNotInEditableStatus_ThrowsInvalidTransitionException(WorkOrderStatus status)
@@ -74,7 +75,7 @@ public class QuotationItemServiceTests
     public async Task AddAsync_PartWithInsufficientStock_DoesNotBlock_ReturnsLowStockWarning()
     {
         var (service, db) = CreateService();
-        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.Diagnosing);
+        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.DiagnosisConfirmed);
         var part = new Part { Name = "Lọc dầu", UnitPrice = 100000, StockQuantity = 1 };
         db.Parts.Add(part);
         await db.SaveChangesAsync();
@@ -97,7 +98,7 @@ public class QuotationItemServiceTests
     public async Task AddAsync_QuantityAndUnitPriceMultiply_RecalculatesWorkOrderTotalAmount()
     {
         var (service, db) = CreateService();
-        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.Diagnosing);
+        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.DiagnosisConfirmed);
 
         await service.AddAsync(new AddQuotationItemRequest { WorkOrderId = workOrderId, Type = QuotationItemType.Labor, Description = "Công 1", Quantity = 1, UnitPrice = 100000 });
         await service.AddAsync(new AddQuotationItemRequest { WorkOrderId = workOrderId, Type = QuotationItemType.Labor, Description = "Công 2", Quantity = 2, UnitPrice = 100000 });
@@ -118,7 +119,7 @@ public class QuotationItemServiceTests
     public async Task RemoveAsync_ExistingItem_RecalculatesWorkOrderTotalAmount()
     {
         var (service, db) = CreateService();
-        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.Diagnosing);
+        var workOrderId = await SeedWorkOrderAsync(db, WorkOrderStatus.DiagnosisConfirmed);
         var itemToKeep = new QuotationItem { WorkOrderId = workOrderId, Type = QuotationItemType.Labor, Description = "Giữ lại", Quantity = 1, UnitPrice = 100000 };
         var itemToRemove = new QuotationItem { WorkOrderId = workOrderId, Type = QuotationItemType.Labor, Description = "Xoá đi", Quantity = 1, UnitPrice = 200000 };
         db.QuotationItems.AddRange(itemToKeep, itemToRemove);

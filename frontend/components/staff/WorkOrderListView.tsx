@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { formatCurrency } from "@/lib/mock/data";
+import { workOrderHref } from "@/lib/workorders/routing";
 import type { AppointmentView, WorkOrderStatus, WorkOrderView } from "@/types/domain";
 import styles from "./WorkOrderListView.module.css";
 
@@ -8,6 +9,7 @@ const STATUS_OPTIONS: { value: WorkOrderStatus | "all"; label: string }[] = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "Received", label: "Đã tiếp nhận" },
   { value: "Diagnosing", label: "Đang chẩn đoán" },
+  { value: "DiagnosisConfirmed", label: "Đã xác nhận chẩn đoán" },
   { value: "QuotePending", label: "Chờ duyệt giá" },
   { value: "InRepair", label: "Đang sửa" },
   { value: "WaitingParts", label: "Chờ phụ tùng" },
@@ -15,16 +17,6 @@ const STATUS_OPTIONS: { value: WorkOrderStatus | "all"; label: string }[] = [
   { value: "Delivered", label: "Đã giao xe" },
   { value: "Cancelled", label: "Đã huỷ" },
 ];
-
-// Received/Diagnosing chưa có gì để xem ở trang chi tiết (chưa có hạng mục báo giá) — bấm vào
-// mã WO ở 2 trạng thái này phải đưa thẳng Technician/Staff tới trang chẩn đoán & lập báo giá.
-const DIAGNOSIS_STATUSES = new Set<WorkOrderStatus>(["Received", "Diagnosing"]);
-
-function workOrderHref(wo: WorkOrderView): string {
-  return DIAGNOSIS_STATUSES.has(wo.status)
-    ? `/staff/workorders/${wo.id}/quote`
-    : `/staff/workorders/${wo.id}`;
-}
 
 interface WorkOrderListViewProps {
   tab: "list" | "calls";
@@ -37,9 +29,12 @@ interface WorkOrderListViewProps {
   callCount: number;
   loading: boolean;
   error: string | null;
+  page: number;
+  setPage: (p: number) => void;
+  hasNextPage: boolean;
 }
 
-export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, workOrders, followUpWorkOrders, lateAppointments, callCount, loading, error }: WorkOrderListViewProps) {
+export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, workOrders, followUpWorkOrders, lateAppointments, callCount, loading, error, page, setPage, hasNextPage }: WorkOrderListViewProps) {
   return (
     <div>
       <div className={styles.header}>
@@ -81,7 +76,7 @@ export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, 
                 {workOrders.map((wo) => (
                   <tr key={wo.id}>
                     <td className={styles.mono}>
-                      <Link href={workOrderHref(wo)}>{wo.code}</Link>
+                      <Link href={workOrderHref(wo.id, wo.status)}>{wo.code}</Link>
                     </td>
                     <td className={styles.mono}>{wo.licensePlate}</td>
                     <td>{wo.customerName}</td>
@@ -94,6 +89,17 @@ export function WorkOrderListView({ tab, setTab, statusFilter, setStatusFilter, 
             </table>
           )}
           {!error && !loading && workOrders.length === 0 && <p className={styles.empty}>Không có work order nào khớp bộ lọc.</p>}
+          {!error && (workOrders.length > 0 || page > 1) && (
+            <div className={styles.pagination}>
+              <button className={styles.smallBtn} onClick={() => setPage(page - 1)} disabled={page <= 1 || loading}>
+                ← Trang trước
+              </button>
+              <span className={styles.mono}>Trang {page}</span>
+              <button className={styles.smallBtn} onClick={() => setPage(page + 1)} disabled={!hasNextPage || loading}>
+                Trang sau →
+              </button>
+            </div>
+          )}
         </>
       )}
 

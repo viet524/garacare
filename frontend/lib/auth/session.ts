@@ -37,7 +37,10 @@ export function clearSession(): void {
 }
 
 export function homePathForRole(role: AuthResponse["role"]): string {
-  return role === "Customer" ? "/customer" : "/staff";
+  if (role === "Customer") return "/customer";
+  // Technician gần như không dùng trang danh sách Work Order chung — vào thẳng queue cá nhân.
+  if (role === "Technician") return "/staff/queue";
+  return "/staff";
 }
 
 // Đọc claim "exp" của JWT (không xác thực chữ ký — chỉ dùng để quyết định có nên chủ động

@@ -11,8 +11,13 @@ export interface StartDiagnosisRequest {
   diagnosisNote?: string;
 }
 
+export interface ConfirmDiagnosisRequest {
+  notes: string;
+  estimatedLaborHours: number;
+}
+
 export interface SendQuoteRequest {
-  estimatedCompletionDate: string;
+  finalEstimatedDate: string;
 }
 
 export interface WorkOrderResponse {
@@ -24,7 +29,9 @@ export interface WorkOrderResponse {
   diagnosisNote: string | null;
   totalAmount: number;
   discountPercent: number;
-  estimatedCompletionDate: string | null;
+  systemSuggestedDate: string | null;
+  finalEstimatedDate: string | null;
+  isHeavyRepair: boolean;
   isDelayed: boolean;
   hasOpenWorkOrderWarning: boolean;
 }
@@ -64,8 +71,11 @@ export interface WorkOrderDetailResponse {
   diagnosisNote: string | null;
   totalAmount: number;
   discountPercent: number;
-  estimatedCompletionDate: string | null;
+  systemSuggestedDate: string | null;
+  finalEstimatedDate: string | null;
+  isHeavyRepair: boolean;
   isDelayed: boolean;
+  assignedTechnicianId: number | null;
   quotationItems: QuotationItemResponse[];
 }
 

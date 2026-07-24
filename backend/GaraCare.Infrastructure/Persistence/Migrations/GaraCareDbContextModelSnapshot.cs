@@ -70,6 +70,34 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.ToTable("Appointments");
                 });
 
+            modelBuilder.Entity("GaraCare.Domain.Entities.Bay", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CurrentWorkOrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CurrentWorkOrderId");
+
+                    b.ToTable("Bays");
+                });
+
             modelBuilder.Entity("GaraCare.Domain.Entities.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -103,6 +131,39 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("GaraCare.Domain.Entities.DiagnosisRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("EstimatedLaborHours")
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("SignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkOrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TechnicianId");
+
+                    b.HasIndex("WorkOrderId")
+                        .IsUnique();
+
+                    b.ToTable("DiagnosisRecords");
                 });
 
             modelBuilder.Entity("GaraCare.Domain.Entities.Notification", b =>
@@ -301,6 +362,40 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("GaraCare.Domain.Entities.ServiceCatalogItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("EstimatedDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsMasterTechRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RequiredBayType")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ServiceCatalogItems");
+                });
+
             modelBuilder.Entity("GaraCare.Domain.Entities.User", b =>
                 {
                     b.Property<int>("Id")
@@ -346,6 +441,10 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Role")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("TechnicianStatus")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -433,13 +532,16 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("DiscountPercent")
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<DateTime?>("EstimatedCompletionDate")
+                    b.Property<DateTime?>("FinalEstimatedDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("InitialDescription")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDelayed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsHeavyRepair")
                         .HasColumnType("bit");
 
                     b.Property<bool>("NeedsFollowUpCall")
@@ -459,6 +561,9 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<DateTime?>("SystemSuggestedDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -476,6 +581,64 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.HasIndex("VehicleId");
 
                     b.ToTable("WorkOrders");
+                });
+
+            modelBuilder.Entity("GaraCare.Domain.Entities.WorkOrderAssignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ApprovedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CommissionSplitPercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HandoffReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("LaborHoursLogged")
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StageAtEnd")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("StageAtStart")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TechnicianId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkOrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("TechnicianId");
+
+                    b.HasIndex("WorkOrderId");
+
+                    b.ToTable("WorkOrderAssignments");
                 });
 
             modelBuilder.Entity("GaraCare.Domain.Entities.WorkOrderStatusHistory", b =>
@@ -536,6 +699,16 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("GaraCare.Domain.Entities.Bay", b =>
+                {
+                    b.HasOne("GaraCare.Domain.Entities.WorkOrder", "CurrentWorkOrder")
+                        .WithMany()
+                        .HasForeignKey("CurrentWorkOrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CurrentWorkOrder");
+                });
+
             modelBuilder.Entity("GaraCare.Domain.Entities.Customer", b =>
                 {
                     b.HasOne("GaraCare.Domain.Entities.User", "User")
@@ -544,6 +717,25 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("GaraCare.Domain.Entities.DiagnosisRecord", b =>
+                {
+                    b.HasOne("GaraCare.Domain.Entities.User", "Technician")
+                        .WithMany()
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GaraCare.Domain.Entities.WorkOrder", "WorkOrder")
+                        .WithOne("DiagnosisRecord")
+                        .HasForeignKey("GaraCare.Domain.Entities.DiagnosisRecord", "WorkOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Technician");
+
+                    b.Navigation("WorkOrder");
                 });
 
             modelBuilder.Entity("GaraCare.Domain.Entities.Notification", b =>
@@ -655,6 +847,33 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
                     b.Navigation("Vehicle");
                 });
 
+            modelBuilder.Entity("GaraCare.Domain.Entities.WorkOrderAssignment", b =>
+                {
+                    b.HasOne("GaraCare.Domain.Entities.User", "ApprovedByUser")
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GaraCare.Domain.Entities.User", "Technician")
+                        .WithMany()
+                        .HasForeignKey("TechnicianId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("GaraCare.Domain.Entities.WorkOrder", "WorkOrder")
+                        .WithMany("Assignments")
+                        .HasForeignKey("WorkOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApprovedByUser");
+
+                    b.Navigation("Technician");
+
+                    b.Navigation("WorkOrder");
+                });
+
             modelBuilder.Entity("GaraCare.Domain.Entities.WorkOrderStatusHistory", b =>
                 {
                     b.HasOne("GaraCare.Domain.Entities.User", "ChangedByUser")
@@ -699,6 +918,10 @@ namespace GaraCare.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("GaraCare.Domain.Entities.WorkOrder", b =>
                 {
+                    b.Navigation("Assignments");
+
+                    b.Navigation("DiagnosisRecord");
+
                     b.Navigation("Payment");
 
                     b.Navigation("QuotationItems");

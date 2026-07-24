@@ -17,15 +17,26 @@ const LINKS = [
   { href: "/staff/users", label: "Nhân viên" },
 ];
 
+// docs/01-business-spec.md §15: "Giao diện Technician: List view rút gọn, chỉ hiện queue cá
+// nhân" — chỉ Technician mới thấy link này, Staff/Admin không có ý nghĩa gì với họ.
+const TECHNICIAN_LINK = { href: "/staff/queue", label: "Queue của tôi" };
+
 export function StaffShell({ children, active }: { children: ReactNode; active?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const activeHref = active ?? pathname;
   const [fullName, setFullName] = useState<string | null>(null);
+  const [isTechnician, setIsTechnician] = useState(false);
 
   useEffect(() => {
-    setFullName(getSession()?.fullName ?? null);
+    const session = getSession();
+    setFullName(session?.fullName ?? null);
+    setIsTechnician(session?.role === "Technician");
   }, []);
+
+  // Technician gần như không dùng danh sách Work Order chung (đã có queue cá nhân riêng) —
+  // bỏ hẳn link "Work Order" khỏi nav của họ thay vì chỉ thêm queue vào cạnh.
+  const links = isTechnician ? [TECHNICIAN_LINK, ...LINKS.slice(1)] : LINKS;
 
   function logout() {
     const refreshToken = getSession()?.refreshToken;
@@ -45,7 +56,7 @@ export function StaffShell({ children, active }: { children: ReactNode; active?:
           GARA<span>CARE</span>
         </div>
         <nav className={styles.nav}>
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}

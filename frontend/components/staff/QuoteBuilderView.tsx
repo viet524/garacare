@@ -15,6 +15,9 @@ interface QuoteBuilderViewProps {
   diagnosisNote: string;
   setDiagnosisNote: (v: string) => void;
   startDiagnosis: () => void;
+  estimatedLaborHours: string;
+  setEstimatedLaborHours: (v: string) => void;
+  confirmDiagnosis: () => void;
   newType: QuotationItemType;
   setNewType: (v: QuotationItemType) => void;
   newDescription: string;
@@ -41,6 +44,9 @@ export function QuoteBuilderView(props: QuoteBuilderViewProps) {
     diagnosisNote,
     setDiagnosisNote,
     startDiagnosis,
+    estimatedLaborHours,
+    setEstimatedLaborHours,
+    confirmDiagnosis,
     newType,
     setNewType,
     newDescription,
@@ -101,14 +107,53 @@ export function QuoteBuilderView(props: QuoteBuilderViewProps) {
     );
   }
 
-  // Đã bắt đầu chẩn đoán (hoặc đã gửi báo giá trước đó) — ghi chú chẩn đoán chỉ sửa được lúc
-  // còn ở Received; dùng resend-quote ở trang chi tiết work order để gửi lại báo giá.
+  // UC-03 bước 3: Technician đã kiểm tra xe (Diagnosing) — ký xác nhận + nhập số giờ công dự
+  // kiến (chỉ thao tác kỹ thuật thuần), tạo DiagnosisRecord bất biến, chuyển DiagnosisConfirmed.
+  // >2 giờ => Heavy Repair, tách khỏi hàng chờ chung (docs/01-business-spec.md §3 bước 4).
+  if (workOrder.status === "Diagnosing") {
+    return (
+      <div className={styles.wrap}>
+        {error && <div className={styles.error}>{error}</div>}
+        <TicketCard code={String(workOrder.id)} onSteel headerRight={<StatusBadge status={workOrder.status} onSteel />}>
+          <div className={styles.mono} style={{ color: "#EDEFEE", marginBottom: 12 }}>Xe #{workOrder.vehicleId}</div>
+          <div className={styles.sectionLabel}>Ghi chú chẩn đoán</div>
+          <textarea
+            className={styles.textarea}
+            value={diagnosisNote}
+            onChange={(e) => setDiagnosisNote(e.target.value)}
+            placeholder="Nguyên nhân, hạng mục nghi cần sửa…"
+          />
+          <div className={styles.sectionLabel} style={{ marginTop: 12 }}>Số giờ công dự kiến</div>
+          <input
+            className={styles.dateInput}
+            type="number"
+            min={0.1}
+            step={0.5}
+            value={estimatedLaborHours}
+            onChange={(e) => setEstimatedLaborHours(e.target.value)}
+            placeholder="VD: 1.5"
+          />
+        </TicketCard>
+        <Button onClick={confirmDiagnosis} disabled={!diagnosisNote.trim() || !(Number(estimatedLaborHours) > 0) || loading}>
+          {loading ? "Đang xác nhận…" : "Xác nhận chẩn đoán"}
+        </Button>
+      </div>
+    );
+  }
+
+  // Đã xác nhận chẩn đoán — ghi chú chẩn đoán chỉ sửa được lúc còn ở Received; dùng resend-quote
+  // ở trang chi tiết work order để gửi lại báo giá sau khi đã QuotePending.
   return (
     <form className={styles.wrap} onSubmit={sendQuote}>
       {error && <div className={styles.error}>{error}</div>}
 
       <TicketCard code={String(workOrder.id)} onSteel headerRight={<StatusBadge status={workOrder.status} onSteel />}>
         <div className={styles.mono} style={{ color: "#EDEFEE", marginBottom: 12 }}>Xe #{workOrder.vehicleId}</div>
+        {workOrder.isHeavyRepair && (
+          <div className={styles.mono} style={{ color: "var(--safety-amber)", marginBottom: 8 }}>
+            ⚠ Heavy Repair — dự kiến &gt; 2 giờ công, tách khỏi hàng chờ chung
+          </div>
+        )}
         <div className={styles.sectionLabel}>Ghi chú chẩn đoán</div>
         <textarea className={styles.textarea} value={diagnosisNote} readOnly />
       </TicketCard>

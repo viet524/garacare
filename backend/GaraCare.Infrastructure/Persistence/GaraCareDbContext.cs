@@ -20,6 +20,10 @@ public class GaraCareDbContext : DbContext
     public DbSet<WorkOrderStatusHistory> WorkOrderStatusHistories => Set<WorkOrderStatusHistory>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Bay> Bays => Set<Bay>();
+    public DbSet<ServiceCatalogItem> ServiceCatalogItems => Set<ServiceCatalogItem>();
+    public DbSet<DiagnosisRecord> DiagnosisRecords => Set<DiagnosisRecord>();
+    public DbSet<WorkOrderAssignment> WorkOrderAssignments => Set<WorkOrderAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

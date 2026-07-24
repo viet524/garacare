@@ -4,6 +4,7 @@
 export type WorkOrderStatus =
   | "Received"
   | "Diagnosing"
+  | "DiagnosisConfirmed"
   | "QuotePending"
   | "InRepair"
   | "WaitingParts"
@@ -73,6 +74,7 @@ export interface NotificationView {
 export const GAUGE_STEPS: WorkOrderStatus[] = [
   "Received",
   "Diagnosing",
+  "DiagnosisConfirmed",
   "QuotePending",
   "InRepair",
   "Completed",
@@ -82,6 +84,7 @@ export const GAUGE_STEPS: WorkOrderStatus[] = [
 export const STATUS_LABEL_VI: Record<WorkOrderStatus, string> = {
   Received: "Đã tiếp nhận",
   Diagnosing: "Đang chẩn đoán",
+  DiagnosisConfirmed: "Đã xác nhận chẩn đoán",
   QuotePending: "Chờ duyệt giá",
   InRepair: "Đang sửa",
   WaitingParts: "Chờ phụ tùng",

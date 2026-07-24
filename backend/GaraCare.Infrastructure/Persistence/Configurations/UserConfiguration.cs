@@ -16,6 +16,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(200);
         builder.HasIndex(u => u.Email).IsUnique().HasFilter("[Email] IS NOT NULL");
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
+        builder.Property(u => u.TechnicianStatus).HasConversion<string>().HasMaxLength(20);
         builder.Property(u => u.EmailVerificationCode).HasMaxLength(16);
         builder.Property(u => u.PasswordResetCode).HasMaxLength(16);
     }

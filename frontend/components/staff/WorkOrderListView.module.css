@@ -87,3 +87,12 @@
 .smallBtnDanger { border-color: var(--brake-red); color: var(--brake-red); }
 
 .empty { color: #A9B0B4; font-size: 13.5px; padding: var(--space-5); text-align: center; }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.pagination .smallBtn:disabled { opacity: 0.4; }

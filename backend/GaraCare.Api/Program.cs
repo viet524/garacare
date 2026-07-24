@@ -2,12 +2,16 @@ using System.Text;
 using GaraCare.Api.Middleware;
 using GaraCare.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OData;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// AddOData(): bắt buộc để [EnableQuery] ($filter/$orderby/$top/$skip trên
+// GET /api/workorders, docs/04-api-contract.md) hoạt động — không dùng route convention
+// OData đầy đủ (không cần $metadata/EDM model cho phạm vi hiện tại).
+builder.Services.AddControllers().AddOData(options => options.Select().Filter().OrderBy().Count().SetMaxTop(100));
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddInfrastructure(builder.Configuration);

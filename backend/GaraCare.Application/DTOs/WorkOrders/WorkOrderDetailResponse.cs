@@ -12,7 +12,10 @@ public class WorkOrderDetailResponse
     public string? DiagnosisNote { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal DiscountPercent { get; set; }
-    public DateTime? EstimatedCompletionDate { get; set; }
+    public DateTime? SystemSuggestedDate { get; set; }
+    public DateTime? FinalEstimatedDate { get; set; }
+    public bool IsHeavyRepair { get; set; }
     public bool IsDelayed { get; set; }
+    public int? AssignedTechnicianId { get; set; }
     public IReadOnlyList<QuotationItemResponse> QuotationItems { get; set; } = new List<QuotationItemResponse>();
 }

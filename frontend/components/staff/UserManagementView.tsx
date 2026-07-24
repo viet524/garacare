@@ -1,11 +1,21 @@
 import { Button } from "@/components/shared/Button";
+import type { UserResponse } from "@/lib/api/users";
 import styles from "./PartsView.module.css";
 
 type InternalRole = "Staff" | "Technician" | "Admin";
-interface InternalUser { id: number; username: string; fullName: string; phone: string; role: InternalRole }
+
+const TECHNICIAN_STATUS_LABEL_VI: Record<string, string> = {
+  Free: "Rảnh",
+  Diagnosing: "Đang chẩn đoán",
+  WaitingOnCustomer: "Chờ khách duyệt giá",
+  WaitingParts: "Chờ phụ tùng",
+  InRepair: "Đang sửa xe",
+};
 
 interface UserManagementViewProps {
-  users: InternalUser[];
+  users: UserResponse[];
+  loading: boolean;
+  error: string | null;
   showForm: boolean;
   setShowForm: (v: boolean) => void;
   username: string;
@@ -19,7 +29,7 @@ interface UserManagementViewProps {
   addUser: (e: React.FormEvent) => void;
 }
 
-export function UserManagementView({ users, showForm, setShowForm, username, setUsername, fullName, setFullName, phone, setPhone, role, setRole, addUser }: UserManagementViewProps) {
+export function UserManagementView({ users, loading, error, showForm, setShowForm, username, setUsername, fullName, setFullName, phone, setPhone, role, setRole, addUser }: UserManagementViewProps) {
   return (
     <div>
       <div className={styles.header}>
@@ -41,26 +51,32 @@ export function UserManagementView({ users, showForm, setShowForm, username, set
         </form>
       )}
 
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Họ tên</th>
-            <th>SĐT</th>
-            <th>Vai trò</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id}>
-              <td className={styles.mono}>{u.username}</td>
-              <td>{u.fullName}</td>
-              <td className={styles.mono}>{u.phone}</td>
-              <td>{u.role}</td>
+      {error && <p className={styles.mono}>{error}</p>}
+      {!error && (
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Họ tên</th>
+              <th>SĐT</th>
+              <th>Vai trò</th>
+              <th>Trạng thái</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id}>
+                <td className={styles.mono}>{u.username}</td>
+                <td>{u.fullName}</td>
+                <td className={styles.mono}>{u.phone}</td>
+                <td>{u.role}</td>
+                <td>{u.technicianStatus ? TECHNICIAN_STATUS_LABEL_VI[u.technicianStatus] ?? u.technicianStatus : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {!error && !loading && users.length === 0 && <p className={styles.mono}>Chưa có nhân viên nào.</p>}
     </div>
   );
 }

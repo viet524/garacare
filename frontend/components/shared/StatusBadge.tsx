@@ -7,6 +7,7 @@ type Tone = "neutral" | "amber" | "teal" | "red";
 const WORK_ORDER_TONE: Record<WorkOrderStatus, Tone> = {
   Received: "neutral",
   Diagnosing: "neutral",
+  DiagnosisConfirmed: "neutral",
   QuotePending: "amber",
   InRepair: "amber",
   WaitingParts: "amber",

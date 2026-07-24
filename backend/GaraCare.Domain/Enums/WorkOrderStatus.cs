@@ -6,6 +6,7 @@ public enum WorkOrderStatus
 {
     Received,
     Diagnosing,
+    DiagnosisConfirmed,
     QuotePending,
     InRepair,
     WaitingParts,
